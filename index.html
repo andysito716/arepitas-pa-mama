@@ -1,0 +1,47 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#2563eb">
+    <title>Ventas Master Arepitas pa mama</title>
+    <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body {
+        -webkit-tap-highlight-color: transparent;
+        user-select: none;
+      }
+      .safe-top { padding-top: env(safe-area-inset-top); }
+      .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+      .custom-scrollbar::-webkit-scrollbar { display: none; }
+      @keyframes pulse-green {
+        0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+        70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+      }
+      .animate-pulse-green { animation: pulse-green 2s infinite; }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "@google/genai": "https://esm.sh/@google/genai@^1.36.0",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.45.4",
+    "recharts": "https://esm.sh/recharts@^3.6.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="bg-slate-50 text-slate-900 overflow-x-hidden">
+    <div id="root"></div>
+    <script type="module" src="index.tsx"></script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>

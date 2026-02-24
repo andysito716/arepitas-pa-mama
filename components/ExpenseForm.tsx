@@ -1,0 +1,105 @@
+
+import React, { useState } from 'react';
+import { Expense } from '../types';
+
+interface ExpenseFormProps {
+  onAddExpense: (expense: Omit<Expense, 'id'>) => void;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, isOpen, onClose }) => {
+  const [description, setDescription] = useState('');
+  const [amount, setAmount] = useState('');
+  const [category, setCategory] = useState('Insumos');
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!description || !amount) return;
+
+    onAddExpense({
+      description,
+      amount: parseFloat(amount),
+      category,
+      date: new Date().toLocaleDateString('es-ES'),
+    });
+
+    setDescription('');
+    setAmount('');
+    setCategory('Insumos');
+    onClose();
+  };
+
+  const inputClasses = "w-full px-4 py-4 bg-slate-100 border-none rounded-2xl text-lg font-bold text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-amber-500 outline-none transition-all";
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200 p-0 sm:p-4">
+      <div className="bg-white w-full max-w-md rounded-t-[32px] sm:rounded-[32px] p-6 pb-12 sm:pb-8 animate-in slide-in-from-bottom duration-300 shadow-2xl">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-black text-slate-800">Registrar Gasto / Compra</h2>
+          <button onClick={onClose} className="p-2 bg-slate-100 rounded-full text-slate-400">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1">
+            <label className="text-[9px] font-black uppercase text-slate-400 ml-2">¿En qué gastaste?</label>
+            <input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className={inputClasses}
+              placeholder="Ej: Harina PAN 5kg"
+              required
+              autoFocus
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-[9px] font-black uppercase text-slate-400 ml-2">Monto</label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className={`${inputClasses} pl-8`}
+                  placeholder="0.00"
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[9px] font-black uppercase text-slate-400 ml-2">Categoría</label>
+              <select 
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className={`${inputClasses} appearance-none cursor-pointer`}
+              >
+                <option value="Insumos">Insumos</option>
+                <option value="Materiales">Materiales</option>
+                <option value="Transporte">Transporte</option>
+                <option value="Servicios">Servicios</option>
+                <option value="Otros">Otros</option>
+              </select>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="w-full py-4 bg-amber-600 text-white text-lg font-black rounded-2xl shadow-xl shadow-amber-200 active:scale-95 transition-all mt-4"
+          >
+            GUARDAR GASTO
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};

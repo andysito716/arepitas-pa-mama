@@ -1,0 +1,36 @@
+
+export interface Sale {
+  id: string;
+  productName: string;
+  price: number;
+  cost: number; // Costo de producción por unidad (COGS)
+  quantity: number;
+  buyerName: string;
+  buyerType: 'comprador' | 'distribuidor';
+  date: string;
+}
+
+export interface Expense {
+  id: string;
+  description: string;
+  amount: number;
+  category: string;
+  date: string;
+}
+
+export interface DailyArchive {
+  id: string;
+  date: string;
+  sales: Sale[];
+  expenses: Expense[]; // Gastos incluidos en el cierre
+  totalRevenue: number;
+  totalProfit: number;
+  totalItems: number;
+}
+
+export interface BusinessStats {
+  totalRevenue: number;
+  totalProfit: number;
+  totalCost: number; // Inversión total (COGS + Gastos directos)
+  totalSalesCount: number;
+}

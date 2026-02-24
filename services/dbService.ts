@@ -1,0 +1,150 @@
+
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { Sale, DailyArchive, Expense } from '../types';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://bgsizvuxyzuzrftpbcud.supabase.co';
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_4zaX9UM5uvrZ0vwebGv6Vw_zbYYCon5';
+
+const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+export const cloudService = {
+  isReady: () => true,
+
+  async fetchSales(businessId: string): Promise<Sale[]> {
+    if (!businessId) return [];
+    try {
+      const { data, error } = await supabase
+        .from('sales')
+        .select('*')
+        .eq('business_id', businessId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      return (data || []).map(item => ({
+        id: item.id,
+        productName: item.product_name,
+        price: item.price,
+        cost: item.cost || 0,
+        quantity: item.quantity,
+        buyerName: item.buyer_name,
+        buyerType: item.buyer_type || 'comprador',
+        date: item.date
+      }));
+    } catch (e: any) {
+      throw e;
+    }
+  },
+
+  async pushSale(businessId: string, sale: Sale) {
+    const { error } = await supabase
+      .from('sales')
+      .insert({
+        id: sale.id,
+        product_name: sale.productName,
+        price: sale.price,
+        cost: sale.cost,
+        quantity: sale.quantity,
+        buyer_name: sale.buyerName,
+        buyer_type: sale.buyerType,
+        date: sale.date,
+        business_id: businessId
+      });
+    if (error) throw error;
+  },
+
+  async deleteSale(saleId: string) {
+    const { error } = await supabase.from('sales').delete().eq('id', saleId);
+    if (error) throw error;
+  },
+
+  async fetchExpenses(businessId: string): Promise<Expense[]> {
+    if (!businessId) return [];
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('business_id', businessId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      return (data || []).map(item => ({
+        id: item.id,
+        description: item.description,
+        amount: item.amount,
+        category: item.category,
+        date: item.date
+      }));
+    } catch (e: any) {
+      throw e;
+    }
+  },
+
+  async pushExpense(businessId: string, expense: Expense) {
+    const { error } = await supabase
+      .from('expenses')
+      .insert({
+        id: expense.id,
+        description: expense.description,
+        amount: expense.amount,
+        category: expense.category,
+        date: expense.date,
+        business_id: businessId
+      });
+    if (error) throw error;
+  },
+
+  async deleteExpense(expenseId: string) {
+    const { error } = await supabase.from('expenses').delete().eq('id', expenseId);
+    if (error) throw error;
+  },
+
+  async fetchHistory(businessId: string): Promise<DailyArchive[]> {
+    if (!businessId) return [];
+    try {
+      const { data, error } = await supabase
+        .from('archives')
+        .select('*')
+        .eq('business_id', businessId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      return (data || []).map(item => ({
+        id: item.id,
+        date: item.date,
+        totalRevenue: item.total_revenue,
+        totalProfit: item.total_profit || 0,
+        totalItems: item.total_items,
+        sales: JSON.parse(item.sales_json || '[]'),
+        expenses: JSON.parse(item.expenses_json || '[]')
+      }));
+    } catch (e: any) {
+      throw e;
+    }
+  },
+
+  async saveArchive(businessId: string, archive: DailyArchive) {
+    const { error: archiveError } = await supabase.from('archives').insert({
+      id: archive.id,
+      date: archive.date,
+      total_revenue: archive.totalRevenue,
+      total_profit: archive.totalProfit,
+      total_items: archive.totalItems,
+      sales_json: JSON.stringify(archive.sales),
+      expenses_json: JSON.stringify(archive.expenses),
+      business_id: businessId
+    });
+
+    if (archiveError) throw archiveError;
+
+    // Limpiar temporales
+    await supabase.from('sales').delete().eq('business_id', businessId);
+    await supabase.from('expenses').delete().eq('business_id', businessId);
+  },
+
+  async deleteArchive(archiveId: string) {
+    await supabase.from('archives').delete().eq('id', archiveId);
+  }
+};
