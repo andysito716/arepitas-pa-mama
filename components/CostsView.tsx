@@ -1,24 +1,122 @@
 
-import React from 'react';
-import { BusinessStats, Sale, Expense } from '../types';
+import React, { useState } from 'react';
+import { BusinessStats, Sale, Expense, ProductionCost } from '../types';
 
 interface CostsViewProps {
   stats: BusinessStats;
   sales: Sale[];
   expenses: Expense[];
+  productionCosts: ProductionCost[];
+  selectedCostId: string;
+  onSelectCost: (id: string) => void;
+  onAddProductionCost: (value: number, label: string) => void;
+  onDeleteProductionCost: (id: string) => void;
   onOpenCalculator: () => void;
   onDeleteExpense: (id: string) => void;
 }
 
-export const CostsView: React.FC<CostsViewProps> = ({ stats, sales, expenses, onOpenCalculator, onDeleteExpense }) => {
+export const CostsView: React.FC<CostsViewProps> = ({ 
+  stats, 
+  sales, 
+  expenses, 
+  productionCosts,
+  selectedCostId,
+  onSelectCost,
+  onAddProductionCost,
+  onDeleteProductionCost,
+  onOpenCalculator, 
+  onDeleteExpense 
+}) => {
+  const [newCostValue, setNewCostValue] = useState('');
+  const [newCostLabel, setNewCostLabel] = useState('');
+  const [showAddForm, setShowAddForm] = useState(false);
+
   // Costos derivados de ventas (COGS)
   const cogsTotal = sales.reduce((acc, s) => acc + (s.cost * s.quantity), 0);
   
   // Gastos directos (Compras, insumos, etc)
   const expensesTotal = expenses.reduce((acc, e) => acc + e.amount, 0);
 
+  const handleAddCost = () => {
+    const val = parseFloat(newCostValue);
+    if (isNaN(val) || !newCostLabel) return;
+    onAddProductionCost(val, newCostLabel);
+    setNewCostValue('');
+    setNewCostLabel('');
+    setShowAddForm(false);
+  };
+
   return (
     <div className="space-y-6">
+      {/* Selector de Costo Predeterminado */}
+      <div className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm space-y-4">
+        <div className="flex justify-between items-center">
+          <h3 className="text-xs font-black uppercase text-slate-400 tracking-widest">Costo de Producción Fijo</h3>
+          <button 
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-3 py-1 rounded-full"
+          >
+            {showAddForm ? 'Cancelar' : '+ Añadir Nuevo'}
+          </button>
+        </div>
+
+        {showAddForm ? (
+          <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="grid grid-cols-2 gap-2">
+              <input 
+                type="text" 
+                placeholder="Nombre (Ej: Arepa Queso)" 
+                value={newCostLabel}
+                onChange={(e) => setNewCostLabel(e.target.value)}
+                className="px-4 py-3 bg-slate-100 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <input 
+                type="number" 
+                placeholder="Valor $" 
+                value={newCostValue}
+                onChange={(e) => setNewCostValue(e.target.value)}
+                className="px-4 py-3 bg-slate-100 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <button 
+              onClick={handleAddCost}
+              className="w-full py-3 bg-blue-600 text-white font-black rounded-xl text-xs uppercase"
+            >
+              Guardar Costo Predeterminado
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            <div className="flex gap-2">
+              <select 
+                value={selectedCostId}
+                onChange={(e) => onSelectCost(e.target.value)}
+                className="flex-1 px-4 py-4 bg-slate-100 border-none rounded-2xl text-lg font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none appearance-none cursor-pointer"
+              >
+                {productionCosts.map(cost => (
+                  <option key={cost.id} value={cost.id}>
+                    {cost.label} - ${cost.value.toLocaleString()}
+                  </option>
+                ))}
+              </select>
+              {selectedCostId !== 'default' && (
+                <button 
+                  onClick={() => onDeleteProductionCost(selectedCostId)}
+                  className="w-14 h-14 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center active:bg-red-500 active:text-white transition-all border border-red-100"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              )}
+            </div>
+            <p className="text-[10px] text-slate-400 font-bold italic ml-2 mt-1">
+              * Este costo se aplicará automáticamente a todas las nuevas ventas.
+            </p>
+          </div>
+        )}
+      </div>
+
       {/* Resumen de Inversión */}
       <div className="bg-amber-500 p-8 rounded-[36px] shadow-2xl shadow-amber-100 text-white relative overflow-hidden">
         <div className="absolute top-0 right-0 p-6 opacity-20">

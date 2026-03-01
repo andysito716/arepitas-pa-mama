@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Sale, BusinessStats, DailyArchive, Expense } from './types';
+import { Sale, BusinessStats, DailyArchive, Expense, ProductionCost } from './types';
 import { Header } from './components/Header';
 import { Dashboard } from './components/Dashboard';
 import { SalesForm } from './components/SalesForm';
@@ -11,6 +11,7 @@ import { HistoryView } from './components/HistoryView';
 import { SyncManager } from './components/SyncManager';
 import { CostsView } from './components/CostsView';
 import { Calculator } from './components/Calculator';
+import { ConfirmModal } from './components/ConfirmModal';
 import { cloudService } from './services/dbService';
 
 type Tab = 'ventas' | 'costos' | 'historial' | 'ia' | 'nube';
@@ -82,11 +83,31 @@ const App: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [dbError, setDbError] = useState<{message: string, isTableError: boolean} | null>(null);
   
+  const [archiveToEdit, setArchiveToEdit] = useState<DailyArchive | null>(null);
+  
   const [businessId, setBusinessId] = useState(() => localStorage.getItem('business_id') || '');
 
   const [sales, setSales] = useState<Sale[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [history, setHistory] = useState<DailyArchive[]>([]);
+  
+  const [productionCosts, setProductionCosts] = useState<ProductionCost[]>(() => {
+    const saved = localStorage.getItem('production_costs');
+    return saved ? JSON.parse(saved) : [{ id: 'default', value: 0, label: 'Costo Base' }];
+  });
+  const [selectedCostId, setSelectedCostId] = useState(() => localStorage.getItem('selected_cost_id') || 'default');
+
+  useEffect(() => {
+    localStorage.setItem('production_costs', JSON.stringify(productionCosts));
+  }, [productionCosts]);
+
+  useEffect(() => {
+    localStorage.setItem('selected_cost_id', selectedCostId);
+  }, [selectedCostId]);
+
+  const activeProductionCost = useMemo(() => 
+    productionCosts.find(c => c.id === selectedCostId)?.value || 0
+  , [productionCosts, selectedCostId]);
 
   const loadData = useCallback(async () => {
     if (!businessId) return;
@@ -128,8 +149,12 @@ const App: React.FC = () => {
     }
   }, [businessId, loadData]);
 
-  const handleAddSale = async (data: Omit<Sale, 'id'>) => {
-    const newSale = { ...data, id: crypto.randomUUID() };
+  const handleAddSale = async (data: Omit<Sale, 'id' | 'cost'>) => {
+    const newSale: Sale = { 
+      ...data, 
+      id: crypto.randomUUID(),
+      cost: activeProductionCost 
+    };
     setSales(prev => [newSale, ...prev]);
     if (businessId) {
       try {
@@ -158,7 +183,6 @@ const App: React.FC = () => {
   };
 
   const handleDeleteExpense = async (id: string) => {
-    if (!confirm("¿Eliminar este gasto?")) return;
     setExpenses(prev => prev.filter(e => e.id !== id));
     if (businessId) await cloudService.deleteExpense(id);
   };
@@ -194,6 +218,29 @@ const App: React.FC = () => {
       }
     }
     setIsSyncing(false);
+  };
+
+  const handleEditDay = (archive: DailyArchive) => {
+    setArchiveToEdit(archive);
+  };
+
+  const confirmEditDay = async () => {
+    if (!archiveToEdit) return;
+    const archive = archiveToEdit;
+    setArchiveToEdit(null);
+    
+    setIsSyncing(true);
+    try {
+      if (businessId) {
+        await cloudService.restoreArchive(businessId, archive);
+        await loadData();
+        setActiveTab('ventas');
+      }
+    } catch (e: any) {
+      setDbError({ message: e.message, isTableError: true });
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const stats = useMemo((): BusinessStats => {
@@ -275,6 +322,19 @@ const App: React.FC = () => {
               stats={stats} 
               sales={sales} 
               expenses={expenses}
+              productionCosts={productionCosts}
+              selectedCostId={selectedCostId}
+              onSelectCost={setSelectedCostId}
+              onAddProductionCost={(val, label) => {
+                const newCost = { id: crypto.randomUUID(), value: val, label };
+                setProductionCosts(prev => [...prev, newCost]);
+                setSelectedCostId(newCost.id);
+              }}
+              onDeleteProductionCost={(id) => {
+                if (productionCosts.length <= 1) return alert("Debes tener al menos un costo guardado.");
+                setProductionCosts(prev => prev.filter(c => c.id !== id));
+                if (selectedCostId === id) setSelectedCostId(productionCosts[0].id);
+              }}
               onOpenCalculator={() => setIsCalcOpen(true)}
               onDeleteExpense={handleDeleteExpense}
             />
@@ -285,7 +345,7 @@ const App: React.FC = () => {
           <HistoryView 
             history={history} 
             onDeleteDay={(id) => cloudService.deleteArchive(id).then(loadData)} 
-            onEditDay={() => alert("Función de edición limitada mientras se actualiza el esquema.")}
+            onEditDay={handleEditDay}
             onQuickAdd={() => {}}
           />
         )}
@@ -322,6 +382,14 @@ const App: React.FC = () => {
       <SalesForm isOpen={isSalesFormOpen} onClose={() => setIsSalesFormOpen(false)} onAddSale={handleAddSale} />
       <ExpenseForm isOpen={isExpenseFormOpen} onClose={() => setIsExpenseFormOpen(false)} onAddExpense={handleAddExpense} />
       <Calculator isOpen={isCalcOpen} onClose={() => setIsCalcOpen(false)} />
+      
+      <ConfirmModal 
+        isOpen={!!archiveToEdit}
+        title="¿Reabrir Cierre?"
+        message={`¿Quieres reabrir el cierre del ${archiveToEdit?.date}? Las ventas y gastos volverán a sus secciones originales para que puedas editarlos.`}
+        onConfirm={confirmEditDay}
+        onCancel={() => setArchiveToEdit(null)}
+      />
 
       <nav className="bg-white/90 backdrop-blur-xl border-t border-slate-200 fixed bottom-0 left-0 right-0 z-50 h-20 flex justify-around items-center px-2 pb-2">
         <NavBtn active={activeTab === 'ventas'} onClick={() => setActiveTab('ventas')} icon="cash" label="Ventas" />

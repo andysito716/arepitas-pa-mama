@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Sale } from '../types';
 
 interface SalesFormProps {
-  onAddSale: (sale: Omit<Sale, 'id'>) => void;
+  onAddSale: (sale: Omit<Sale, 'id' | 'cost'>) => void;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -11,7 +11,6 @@ interface SalesFormProps {
 export const SalesForm: React.FC<SalesFormProps> = ({ onAddSale, isOpen, onClose }) => {
   const [productName, setProductName] = useState('');
   const [price, setPrice] = useState('');
-  const [cost, setCost] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [buyerName, setBuyerName] = useState('');
   const [buyerType, setBuyerType] = useState<'comprador' | 'distribuidor'>('comprador');
@@ -25,7 +24,6 @@ export const SalesForm: React.FC<SalesFormProps> = ({ onAddSale, isOpen, onClose
     onAddSale({
       productName,
       price: parseFloat(price),
-      cost: parseFloat(cost) || 0,
       quantity: parseInt(quantity),
       buyerName,
       buyerType,
@@ -34,7 +32,6 @@ export const SalesForm: React.FC<SalesFormProps> = ({ onAddSale, isOpen, onClose
 
     setProductName('');
     setPrice('');
-    setCost('');
     setQuantity('1');
     setBuyerName('');
     setBuyerType('comprador');
@@ -69,7 +66,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ onAddSale, isOpen, onClose
             autoFocus
           />
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div className="space-y-1">
               <label className="text-[9px] font-black uppercase text-slate-400 ml-2">Precio de Venta</label>
               <div className="relative">
@@ -82,20 +79,6 @@ export const SalesForm: React.FC<SalesFormProps> = ({ onAddSale, isOpen, onClose
                   className={`${inputClasses} pl-8`}
                   placeholder="0.00"
                   required
-                />
-              </div>
-            </div>
-            <div className="space-y-1">
-              <label className="text-[9px] font-black uppercase text-slate-400 ml-2">Costo Producción</label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  value={cost}
-                  onChange={(e) => setCost(e.target.value)}
-                  className={`${inputClasses} pl-8 bg-amber-50`}
-                  placeholder="0.00"
                 />
               </div>
             </div>

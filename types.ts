@@ -34,3 +34,9 @@ export interface BusinessStats {
   totalCost: number; // Inversión total (COGS + Gastos directos)
   totalSalesCount: number;
 }
+
+export interface ProductionCost {
+  id: string;
+  value: number;
+  label: string;
+}

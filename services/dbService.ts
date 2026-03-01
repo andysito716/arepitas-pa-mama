@@ -146,5 +146,44 @@ export const cloudService = {
 
   async deleteArchive(archiveId: string) {
     await supabase.from('archives').delete().eq('id', archiveId);
+  },
+
+  async restoreArchive(businessId: string, archive: DailyArchive) {
+    // 1. Reinsertar ventas
+    const salesToInsert = archive.sales.map(s => ({
+      id: s.id,
+      product_name: s.productName,
+      price: s.price,
+      cost: s.cost,
+      quantity: s.quantity,
+      buyer_name: s.buyerName,
+      buyer_type: s.buyerType,
+      date: s.date,
+      business_id: businessId
+    }));
+    
+    if (salesToInsert.length > 0) {
+      const { error: sError } = await supabase.from('sales').insert(salesToInsert);
+      if (sError) throw sError;
+    }
+
+    // 2. Reinsertar gastos
+    const expensesToInsert = archive.expenses.map(e => ({
+      id: e.id,
+      description: e.description,
+      amount: e.amount,
+      category: e.category,
+      date: e.date,
+      business_id: businessId
+    }));
+
+    if (expensesToInsert.length > 0) {
+      const { error: eError } = await supabase.from('expenses').insert(expensesToInsert);
+      if (eError) throw eError;
+    }
+
+    // 3. Eliminar el archivo
+    const { error: aError } = await supabase.from('archives').delete().eq('id', archive.id);
+    if (aError) throw aError;
   }
 };
