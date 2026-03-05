@@ -57,6 +57,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ onAddSale, isOpen, onClose
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
+            id="tutorial-product-input"
             type="text"
             value={productName}
             onChange={(e) => setProductName(e.target.value)}
@@ -72,6 +73,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ onAddSale, isOpen, onClose
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
                 <input
+                  id="tutorial-price-input"
                   type="number"
                   inputMode="decimal"
                   value={price}
@@ -88,6 +90,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ onAddSale, isOpen, onClose
              <div className="col-span-1 space-y-1">
                 <label className="text-[9px] font-black uppercase text-slate-400 ml-2">Cantidad</label>
                 <input
+                  id="tutorial-quantity-input"
                   type="number"
                   inputMode="numeric"
                   value={quantity}
@@ -100,6 +103,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ onAddSale, isOpen, onClose
              <div className="col-span-2 space-y-1">
                 <label className="text-[9px] font-black uppercase text-slate-400 ml-2">Cliente</label>
                 <input
+                  id="tutorial-client-input"
                   type="text"
                   value={buyerName}
                   onChange={(e) => setBuyerName(e.target.value)}
@@ -113,6 +117,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ onAddSale, isOpen, onClose
           <div className="space-y-1">
             <label className="text-[9px] font-black uppercase text-slate-400 ml-2">Tipo de Cliente</label>
             <select
+              id="tutorial-client-type-select"
               value={buyerType}
               onChange={(e) => setBuyerType(e.target.value as 'comprador' | 'distribuidor')}
               className={inputClasses}
@@ -123,6 +128,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ onAddSale, isOpen, onClose
           </div>
 
           <button
+            id="tutorial-confirm-sale"
             type="submit"
             className="w-full py-4 bg-blue-600 text-white text-lg font-black rounded-2xl shadow-xl shadow-blue-200 active:scale-95 transition-all mt-4"
           >

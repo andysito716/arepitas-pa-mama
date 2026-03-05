@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Sale, BusinessStats, DailyArchive, Expense, ProductionCost } from './types';
+import { Sale, BusinessStats, DailyArchive, Expense, ProductionCost, Note, Suggestion } from './types';
 import { Header } from './components/Header';
 import { Dashboard } from './components/Dashboard';
 import { SalesForm } from './components/SalesForm';
@@ -12,9 +12,12 @@ import { SyncManager } from './components/SyncManager';
 import { CostsView } from './components/CostsView';
 import { Calculator } from './components/Calculator';
 import { ConfirmModal } from './components/ConfirmModal';
+import { Tutorial } from './components/Tutorial';
+import { NotesSection } from './components/NotesSection';
+import { SuggestionsSection } from './components/SuggestionsSection';
 import { cloudService } from './services/dbService';
 
-type Tab = 'ventas' | 'costos' | 'historial' | 'ia' | 'nube';
+type Tab = 'ventas' | 'costos' | 'historial' | 'ia' | 'notas' | 'nube';
 
 const SQL_SETUP = `-- 1. COPIA TODO ESTE CÓDIGO
 -- 2. VE A TU PANEL DE SUPABASE -> SQL EDITOR -> NUEVA CONSULTA
@@ -58,6 +61,25 @@ create table if not exists archives (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
+-- TABLA DE NOTAS
+create table if not exists notes (
+  id uuid primary key default gen_random_uuid(),
+  content text not null,
+  date text not null,
+  business_id text not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- TABLA DE SUGERENCIAS
+create table if not exists suggestions (
+  id uuid primary key default gen_random_uuid(),
+  content text not null,
+  date text not null,
+  business_id text not null,
+  timestamp bigint not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
 -- ASEGURAR COLUMNAS SI LAS TABLAS YA EXISTÍAN
 do $$ 
 begin 
@@ -80,6 +102,7 @@ const App: React.FC = () => {
   const [isSalesFormOpen, setIsSalesFormOpen] = useState(false);
   const [isExpenseFormOpen, setIsExpenseFormOpen] = useState(false);
   const [isCalcOpen, setIsCalcOpen] = useState(false);
+  const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [dbError, setDbError] = useState<{message: string, isTableError: boolean} | null>(null);
   
@@ -90,6 +113,8 @@ const App: React.FC = () => {
   const [sales, setSales] = useState<Sale[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [history, setHistory] = useState<DailyArchive[]>([]);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   
   const [productionCosts, setProductionCosts] = useState<ProductionCost[]>(() => {
     const saved = localStorage.getItem('production_costs');
@@ -114,14 +139,21 @@ const App: React.FC = () => {
     setIsSyncing(true);
     setDbError(null);
     try {
-      const [remoteSales, remoteExpenses, remoteHistory] = await Promise.all([
+      const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+      await cloudService.cleanupOldSuggestions(businessId, oneWeekAgo);
+
+      const [remoteSales, remoteExpenses, remoteHistory, remoteNotes, remoteSuggestions] = await Promise.all([
         cloudService.fetchSales(businessId),
         cloudService.fetchExpenses(businessId),
-        cloudService.fetchHistory(businessId)
+        cloudService.fetchHistory(businessId),
+        cloudService.fetchNotes(businessId),
+        cloudService.fetchSuggestions(businessId)
       ]);
       setSales(remoteSales);
       setExpenses(remoteExpenses);
       setHistory(remoteHistory);
+      setNotes(remoteNotes);
+      setSuggestions(remoteSuggestions);
     } catch (e: any) {
       console.error("Error en carga:", e);
       let errorMessage = e.message || "Error al conectar con la nube";
@@ -185,6 +217,51 @@ const App: React.FC = () => {
   const handleDeleteExpense = async (id: string) => {
     setExpenses(prev => prev.filter(e => e.id !== id));
     if (businessId) await cloudService.deleteExpense(id);
+  };
+
+  const handleAddNote = async (content: string) => {
+    const newNote: Note = {
+      id: crypto.randomUUID(),
+      content,
+      date: new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
+      business_id: businessId
+    };
+    setNotes(prev => [newNote, ...prev]);
+    if (businessId) {
+      try {
+        await cloudService.pushNote(businessId, newNote);
+      } catch (e: any) {
+        setDbError({ message: e.message, isTableError: true });
+      }
+    }
+  };
+
+  const handleDeleteNote = async (id: string) => {
+    setNotes(prev => prev.filter(n => n.id !== id));
+    if (businessId) await cloudService.deleteNote(id);
+  };
+
+  const handleAddSuggestion = async (content: string) => {
+    const newSuggestion: Suggestion = {
+      id: crypto.randomUUID(),
+      content,
+      date: new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
+      business_id: businessId,
+      timestamp: Date.now()
+    };
+    setSuggestions(prev => [newSuggestion, ...prev]);
+    if (businessId) {
+      try {
+        await cloudService.pushSuggestion(businessId, newSuggestion);
+      } catch (e: any) {
+        setDbError({ message: e.message, isTableError: true });
+      }
+    }
+  };
+
+  const handleDeleteSuggestion = async (id: string) => {
+    setSuggestions(prev => prev.filter(s => s.id !== id));
+    if (businessId) await cloudService.deleteSuggestion(id);
   };
 
   const handleNewDay = async () => {
@@ -262,6 +339,20 @@ const App: React.FC = () => {
       
       <main className="flex-1 overflow-y-auto pb-32 px-4 pt-4 safe-top custom-scrollbar">
         <div className="max-w-2xl mx-auto w-full">
+          {activeTab === 'ventas' && (
+            <button 
+              onClick={() => setIsTutorialOpen(true)}
+              className="w-full mb-4 py-4 bg-white border-2 border-blue-100 rounded-[28px] flex items-center justify-center gap-3 text-blue-600 font-black text-xs uppercase tracking-widest shadow-sm hover:bg-blue-50 transition-all active:scale-95 group"
+            >
+              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              ¿Cómo usar la App? Ver Tutorial
+            </button>
+          )}
+
           {dbError && (
           <div className="mb-6 bg-red-50 border-2 border-red-200 p-6 rounded-[32px] space-y-4 animate-in fade-in zoom-in duration-300">
             <div className="flex items-center gap-3 text-red-700">
@@ -309,9 +400,27 @@ const App: React.FC = () => {
             <Dashboard stats={stats} />
             <h3 className="font-black text-slate-800 text-lg uppercase tracking-tight">Ventas de Hoy</h3>
             <SalesTable sales={sales} onDeleteSale={handleDeleteSale} onUpdateSale={() => {}} />
-            <button onClick={handleNewDay} className="w-full py-5 bg-slate-800 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all disabled:opacity-50" disabled={isSyncing}>
+            <button id="tutorial-close-day" onClick={handleNewDay} className="w-full py-5 bg-slate-800 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all disabled:opacity-50" disabled={isSyncing}>
               {isSyncing ? 'SINCRONIZANDO...' : 'CERRAR CAJA DE HOY'}
             </button>
+          </div>
+        )}
+
+        {activeTab === 'notas' && (
+          <div className="space-y-12">
+            <NotesSection 
+              notes={notes} 
+              onAddNote={handleAddNote} 
+              onDeleteNote={handleDeleteNote} 
+            />
+            
+            <div className="h-px bg-slate-200 mx-4" />
+
+            <SuggestionsSection 
+              suggestions={suggestions}
+              onAddSuggestion={handleAddSuggestion}
+              onDeleteSuggestion={handleDeleteSuggestion}
+            />
           </div>
         )}
 
@@ -359,6 +468,7 @@ const App: React.FC = () => {
       <div className="fixed bottom-24 right-6 flex flex-col gap-3 z-40">
         {activeTab === 'costos' && (
           <button 
+            id="tutorial-add-expense"
             onClick={() => setIsExpenseFormOpen(true)}
             className="w-16 h-16 bg-amber-500 text-white rounded-full shadow-2xl border-4 border-white flex items-center justify-center active:scale-90 transition-all"
           >
@@ -369,6 +479,7 @@ const App: React.FC = () => {
         )}
         {activeTab === 'ventas' && (
           <button 
+            id="tutorial-add-sale"
             onClick={() => setIsSalesFormOpen(true)}
             className="w-16 h-16 bg-blue-600 text-white rounded-full shadow-2xl border-4 border-white flex items-center justify-center active:scale-90 transition-all"
           >
@@ -383,6 +494,14 @@ const App: React.FC = () => {
       <ExpenseForm isOpen={isExpenseFormOpen} onClose={() => setIsExpenseFormOpen(false)} onAddExpense={handleAddExpense} />
       <Calculator isOpen={isCalcOpen} onClose={() => setIsCalcOpen(false)} />
       
+      <Tutorial 
+        isOpen={isTutorialOpen} 
+        onClose={() => setIsTutorialOpen(false)} 
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        isSalesFormOpen={isSalesFormOpen}
+      />
+
       <ConfirmModal 
         isOpen={!!archiveToEdit}
         title="¿Reabrir Cierre?"
@@ -391,27 +510,29 @@ const App: React.FC = () => {
         onCancel={() => setArchiveToEdit(null)}
       />
 
-      <nav className="bg-white/90 backdrop-blur-xl border-t border-slate-200 fixed bottom-0 left-0 right-0 z-50 h-20 flex justify-around items-center px-2 pb-2">
-        <NavBtn active={activeTab === 'ventas'} onClick={() => setActiveTab('ventas')} icon="cash" label="Ventas" />
-        <NavBtn active={activeTab === 'costos'} onClick={() => setActiveTab('costos')} icon="beaker" label="Costos" />
-        <NavBtn active={activeTab === 'historial'} onClick={() => setActiveTab('historial')} icon="history" label="Historial" />
-        <NavBtn active={activeTab === 'ia'} onClick={() => setActiveTab('ia')} icon="sparkles" label="IA" />
-        <NavBtn active={activeTab === 'nube'} onClick={() => setActiveTab('nube')} icon="cloud" label="Negocio" />
+      <nav id="tutorial-nav-bar" className="bg-white/90 backdrop-blur-xl border-t border-slate-200 fixed bottom-0 left-0 right-0 z-50 h-20 flex justify-around items-center px-2 pb-2">
+        <NavBtn id="nav-ventas" active={activeTab === 'ventas'} onClick={() => setActiveTab('ventas')} icon="cash" label="Ventas" />
+        <NavBtn id="nav-costos" active={activeTab === 'costos'} onClick={() => setActiveTab('costos')} icon="beaker" label="Costos" />
+        <NavBtn id="nav-notas" active={activeTab === 'notas'} onClick={() => setActiveTab('notas')} icon="note" label="Notas" />
+        <NavBtn id="nav-historial" active={activeTab === 'historial'} onClick={() => setActiveTab('historial')} icon="history" label="Historial" />
+        <NavBtn id="nav-ia" active={activeTab === 'ia'} onClick={() => setActiveTab('ia')} icon="sparkles" label="IA" />
+        <NavBtn id="nav-nube" active={activeTab === 'nube'} onClick={() => setActiveTab('nube')} icon="cloud" label="Negocio" />
       </nav>
     </div>
   );
 };
 
-const NavBtn = ({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: string, label: string }) => {
+const NavBtn = ({ active, onClick, icon, label, id }: { active: boolean, onClick: () => void, icon: string, label: string, id?: string }) => {
   const icons: Record<string, React.ReactNode> = {
     cash: <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
     beaker: <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.631.285a2 2 0 01-1.558 0l-.63-.285a6 6 0 00-3.86-.517l-2.388.477a2 2 0 00-1.022.547V21h17.428v-5.572zM7 3l3 4h4l3-4" /></svg>,
     history: <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
     sparkles: <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>,
+    note: <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>,
     cloud: <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
   };
   return (
-    <button onClick={onClick} className={`flex flex-col items-center justify-center flex-1 transition-all ${active ? 'text-blue-600 scale-110' : 'text-slate-400'}`}>
+    <button id={id} onClick={onClick} className={`flex flex-col items-center justify-center flex-1 transition-all ${active ? 'text-blue-600 scale-110' : 'text-slate-400'}`}>
       {icons[icon]}
       <span className={`text-[9px] font-black uppercase tracking-wider ${active ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}>{label}</span>
     </button>

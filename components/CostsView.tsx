@@ -141,6 +141,7 @@ export const CostsView: React.FC<CostsViewProps> = ({
         </div>
 
         <button 
+          id="tutorial-calculator-btn"
           onClick={onOpenCalculator}
           className="mt-6 w-full py-4 bg-white/20 hover:bg-white/30 rounded-2xl flex items-center justify-center gap-3 backdrop-blur-md transition-all active:scale-95 border border-white/30 font-black text-xs uppercase tracking-widest"
         >

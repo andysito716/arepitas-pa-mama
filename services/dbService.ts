@@ -1,6 +1,6 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { Sale, DailyArchive, Expense } from '../types';
+import { Sale, DailyArchive, Expense, Note, Suggestion } from '../types';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://bgsizvuxyzuzrftpbcud.supabase.co';
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_4zaX9UM5uvrZ0vwebGv6Vw_zbYYCon5';
@@ -9,6 +9,95 @@ const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 export const cloudService = {
   isReady: () => true,
+
+  async fetchSuggestions(businessId: string): Promise<Suggestion[]> {
+    if (!businessId) return [];
+    try {
+      const { data, error } = await supabase
+        .from('suggestions')
+        .select('*')
+        .eq('business_id', businessId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      return (data || []).map(item => ({
+        id: item.id,
+        content: item.content,
+        date: item.date,
+        business_id: item.business_id,
+        timestamp: Number(item.timestamp)
+      }));
+    } catch (e: any) {
+      throw e;
+    }
+  },
+
+  async pushSuggestion(businessId: string, suggestion: Suggestion) {
+    const { error } = await supabase
+      .from('suggestions')
+      .insert({
+        id: suggestion.id,
+        content: suggestion.content,
+        date: suggestion.date,
+        business_id: businessId,
+        timestamp: suggestion.timestamp
+      });
+    if (error) throw error;
+  },
+
+  async deleteSuggestion(suggestionId: string) {
+    const { error } = await supabase.from('suggestions').delete().eq('id', suggestionId);
+    if (error) throw error;
+  },
+
+  async cleanupOldSuggestions(businessId: string, oneWeekAgo: number) {
+    const { error } = await supabase
+      .from('suggestions')
+      .delete()
+      .eq('business_id', businessId)
+      .lt('timestamp', oneWeekAgo);
+    if (error) throw error;
+  },
+
+  async fetchNotes(businessId: string): Promise<Note[]> {
+    if (!businessId) return [];
+    try {
+      const { data, error } = await supabase
+        .from('notes')
+        .select('*')
+        .eq('business_id', businessId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      return (data || []).map(item => ({
+        id: item.id,
+        content: item.content,
+        date: item.date,
+        business_id: item.business_id
+      }));
+    } catch (e: any) {
+      throw e;
+    }
+  },
+
+  async pushNote(businessId: string, note: Note) {
+    const { error } = await supabase
+      .from('notes')
+      .insert({
+        id: note.id,
+        content: note.content,
+        date: note.date,
+        business_id: businessId
+      });
+    if (error) throw error;
+  },
+
+  async deleteNote(noteId: string) {
+    const { error } = await supabase.from('notes').delete().eq('id', noteId);
+    if (error) throw error;
+  },
 
   async fetchSales(businessId: string): Promise<Sale[]> {
     if (!businessId) return [];

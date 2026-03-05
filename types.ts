@@ -40,3 +40,18 @@ export interface ProductionCost {
   value: number;
   label: string;
 }
+
+export interface Note {
+  id: string;
+  content: string;
+  date: string;
+  business_id: string;
+}
+
+export interface Suggestion {
+  id: string;
+  content: string;
+  date: string;
+  business_id: string;
+  timestamp: number;
+}
