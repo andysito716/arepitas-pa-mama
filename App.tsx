@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Sale, BusinessStats, DailyArchive, Expense, ProductionCost, Note, Suggestion } from './types';
+import { Sale, BusinessStats, DailyArchive, Expense, ProductionCost, Note, Suggestion, ClosingSchedule } from './types';
 import { Header } from './components/Header';
 import { Dashboard } from './components/Dashboard';
 import { SalesForm } from './components/SalesForm';
@@ -15,6 +15,7 @@ import { ConfirmModal } from './components/ConfirmModal';
 import { Tutorial } from './components/Tutorial';
 import { NotesSection } from './components/NotesSection';
 import { SuggestionsSection } from './components/SuggestionsSection';
+import { ClosingScheduleModal } from './components/ClosingScheduleModal';
 import { cloudService } from './services/dbService';
 
 type Tab = 'ventas' | 'costos' | 'historial' | 'ia' | 'notas' | 'nube';
@@ -80,6 +81,14 @@ create table if not exists suggestions (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
+-- TABLA DE HORARIOS DE CIERRE
+create table if not exists closing_schedules (
+  id uuid primary key default gen_random_uuid(),
+  time text not null,
+  business_id text not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
 -- ASEGURAR COLUMNAS SI LAS TABLAS YA EXISTÍAN
 do $$ 
 begin 
@@ -115,6 +124,9 @@ const App: React.FC = () => {
   const [history, setHistory] = useState<DailyArchive[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [closingSchedules, setClosingSchedules] = useState<ClosingSchedule[]>([]);
+  const [isClosingModalOpen, setIsClosingModalOpen] = useState(false);
+  const [lastAutoCloseCheck, setLastAutoCloseCheck] = useState<string | null>(null);
   
   const [productionCosts, setProductionCosts] = useState<ProductionCost[]>(() => {
     const saved = localStorage.getItem('production_costs');
@@ -142,18 +154,20 @@ const App: React.FC = () => {
       const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
       await cloudService.cleanupOldSuggestions(businessId, oneWeekAgo);
 
-      const [remoteSales, remoteExpenses, remoteHistory, remoteNotes, remoteSuggestions] = await Promise.all([
+      const [remoteSales, remoteExpenses, remoteHistory, remoteNotes, remoteSuggestions, remoteSchedules] = await Promise.all([
         cloudService.fetchSales(businessId),
         cloudService.fetchExpenses(businessId),
         cloudService.fetchHistory(businessId),
         cloudService.fetchNotes(businessId),
-        cloudService.fetchSuggestions(businessId)
+        cloudService.fetchSuggestions(businessId),
+        cloudService.fetchClosingSchedules(businessId)
       ]);
       setSales(remoteSales);
       setExpenses(remoteExpenses);
       setHistory(remoteHistory);
       setNotes(remoteNotes);
       setSuggestions(remoteSuggestions);
+      setClosingSchedules(remoteSchedules);
     } catch (e: any) {
       console.error("Error en carga:", e);
       let errorMessage = e.message || "Error al conectar con la nube";
@@ -263,6 +277,47 @@ const App: React.FC = () => {
     setSuggestions(prev => prev.filter(s => s.id !== id));
     if (businessId) await cloudService.deleteSuggestion(id);
   };
+
+  const handleAddClosingSchedule = async (time: string) => {
+    const newSchedule: ClosingSchedule = {
+      id: crypto.randomUUID(),
+      time,
+      business_id: businessId
+    };
+    setClosingSchedules(prev => [...prev, newSchedule].sort((a, b) => a.time.localeCompare(b.time)));
+    if (businessId) {
+      try {
+        await cloudService.pushClosingSchedule(businessId, newSchedule);
+      } catch (e: any) {
+        setDbError({ message: e.message, isTableError: true });
+      }
+    }
+  };
+
+  const handleDeleteClosingSchedule = async (id: string) => {
+    setClosingSchedules(prev => prev.filter(s => s.id !== id));
+    if (businessId) await cloudService.deleteClosingSchedule(id);
+  };
+
+  // Lógica de auto-cierre
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (closingSchedules.length === 0 || (sales.length === 0 && expenses.length === 0)) return;
+
+      const now = new Date();
+      const currentTime = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+      if (currentTime === lastAutoCloseCheck) return;
+
+      const shouldClose = closingSchedules.some(s => s.time === currentTime);
+      if (shouldClose) {
+        setLastAutoCloseCheck(currentTime);
+        handleNewDay();
+      }
+    }, 30000); // Check every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [closingSchedules, sales, expenses, lastAutoCloseCheck]);
 
   const handleNewDay = async () => {
     if (sales.length === 0 && expenses.length === 0) return alert("Nada que guardar.");
@@ -400,9 +455,23 @@ const App: React.FC = () => {
             <Dashboard stats={stats} />
             <h3 className="font-black text-slate-800 text-lg uppercase tracking-tight">Ventas de Hoy</h3>
             <SalesTable sales={sales} onDeleteSale={handleDeleteSale} onUpdateSale={() => {}} />
-            <button id="tutorial-close-day" onClick={handleNewDay} className="w-full py-5 bg-slate-800 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all disabled:opacity-50" disabled={isSyncing}>
-              {isSyncing ? 'SINCRONIZANDO...' : 'CERRAR CAJA DE HOY'}
-            </button>
+            
+            <div className="flex flex-col gap-3">
+              <button 
+                id="tutorial-closing-schedules"
+                onClick={() => setIsClosingModalOpen(true)}
+                className="w-full py-4 bg-blue-50 text-blue-600 font-black rounded-2xl border-2 border-blue-100 flex items-center justify-center gap-2 active:scale-95 transition-all uppercase text-xs tracking-widest"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Configurar Horarios de Cierre
+              </button>
+
+              <button id="tutorial-close-day" onClick={handleNewDay} className="w-full py-5 bg-slate-800 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all disabled:opacity-50" disabled={isSyncing}>
+                {isSyncing ? 'SINCRONIZANDO...' : 'CERRAR CAJA DE HOY'}
+              </button>
+            </div>
           </div>
         )}
 
@@ -500,6 +569,14 @@ const App: React.FC = () => {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         isSalesFormOpen={isSalesFormOpen}
+      />
+
+      <ClosingScheduleModal 
+        isOpen={isClosingModalOpen}
+        onClose={() => setIsClosingModalOpen(false)}
+        schedules={closingSchedules}
+        onAddSchedule={handleAddClosingSchedule}
+        onDeleteSchedule={handleDeleteClosingSchedule}
       />
 
       <ConfirmModal 

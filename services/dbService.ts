@@ -1,6 +1,6 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { Sale, DailyArchive, Expense, Note, Suggestion } from '../types';
+import { Sale, DailyArchive, Expense, Note, Suggestion, ClosingSchedule } from '../types';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://bgsizvuxyzuzrftpbcud.supabase.co';
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_4zaX9UM5uvrZ0vwebGv6Vw_zbYYCon5';
@@ -9,6 +9,43 @@ const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 export const cloudService = {
   isReady: () => true,
+
+  async fetchClosingSchedules(businessId: string): Promise<ClosingSchedule[]> {
+    if (!businessId) return [];
+    try {
+      const { data, error } = await supabase
+        .from('closing_schedules')
+        .select('*')
+        .eq('business_id', businessId)
+        .order('time', { ascending: true });
+
+      if (error) throw error;
+
+      return (data || []).map(item => ({
+        id: item.id,
+        time: item.time,
+        business_id: item.business_id
+      }));
+    } catch (e: any) {
+      throw e;
+    }
+  },
+
+  async pushClosingSchedule(businessId: string, schedule: ClosingSchedule) {
+    const { error } = await supabase
+      .from('closing_schedules')
+      .insert({
+        id: schedule.id,
+        time: schedule.time,
+        business_id: businessId
+      });
+    if (error) throw error;
+  },
+
+  async deleteClosingSchedule(scheduleId: string) {
+    const { error } = await supabase.from('closing_schedules').delete().eq('id', scheduleId);
+    if (error) throw error;
+  },
 
   async fetchSuggestions(businessId: string): Promise<Suggestion[]> {
     if (!businessId) return [];

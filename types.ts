@@ -55,3 +55,9 @@ export interface Suggestion {
   business_id: string;
   timestamp: number;
 }
+
+export interface ClosingSchedule {
+  id: string;
+  time: string; // HH:mm format
+  business_id: string;
+}

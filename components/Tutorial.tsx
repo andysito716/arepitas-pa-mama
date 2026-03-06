@@ -77,6 +77,12 @@ export const Tutorial: React.FC<TutorialProps> = ({ isOpen, onClose, activeTab, 
       targetTab: "ventas",
       elementId: "tutorial-close-day"
     },
+    {
+      title: "Horarios de Cierre",
+      description: "Si a veces se te olvida cerrar la caja, aquí puedes configurar horarios para que la app lo haga automáticamente. ¡Se sincroniza con todo tu equipo!",
+      targetTab: "ventas",
+      elementId: "tutorial-closing-schedules"
+    },
     // SECCIÓN COSTOS
     {
       title: "Costos e Insumos",
