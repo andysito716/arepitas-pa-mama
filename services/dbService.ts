@@ -1,6 +1,6 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { Sale, DailyArchive, Expense, Note, Suggestion, ClosingSchedule } from '../types';
+import { Sale, DailyArchive, Expense, Note, Suggestion, ClosingSchedule, ProductionCost, Booking } from '../types';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://bgsizvuxyzuzrftpbcud.supabase.co';
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_4zaX9UM5uvrZ0vwebGv6Vw_zbYYCon5';
@@ -44,6 +44,65 @@ export const cloudService = {
 
   async deleteClosingSchedule(scheduleId: string) {
     const { error } = await supabase.from('closing_schedules').delete().eq('id', scheduleId);
+    if (error) throw error;
+  },
+
+  async fetchProductionCosts(businessId: string): Promise<ProductionCost[]> {
+    if (!businessId) return [];
+    try {
+      const { data, error } = await supabase
+        .from('production_costs')
+        .select('*')
+        .eq('business_id', businessId);
+
+      if (error) throw error;
+
+      return (data || []).map(item => ({
+        id: item.id,
+        label: item.label,
+        value: Number(item.value)
+      }));
+    } catch (e: any) {
+      throw e;
+    }
+  },
+
+  async pushProductionCost(businessId: string, cost: ProductionCost) {
+    const { error } = await supabase
+      .from('production_costs')
+      .upsert({
+        id: cost.id,
+        label: cost.label,
+        value: cost.value,
+        business_id: businessId
+      });
+    if (error) throw error;
+  },
+
+  async deleteProductionCost(costId: string) {
+    const { error } = await supabase.from('production_costs').delete().eq('id', costId);
+    if (error) throw error;
+  },
+
+  async fetchBusinessSettings(businessId: string): Promise<{ selected_production_cost_id: string } | null> {
+    if (!businessId) return null;
+    const { data, error } = await supabase
+      .from('business_settings')
+      .select('selected_production_cost_id')
+      .eq('business_id', businessId)
+      .single();
+    if (error && error.code !== 'PGRST116') throw error;
+    return data;
+  },
+
+  async updateBusinessSettings(businessId: string, settings: { selected_production_cost_id: string }) {
+    const { error } = await supabase
+      .from('business_settings')
+      .upsert({
+        business_id: businessId,
+        selected_production_cost_id: settings.selected_production_cost_id,
+        updated_at: new Date().toISOString()
+      });
     if (error) throw error;
   },
 
@@ -311,5 +370,57 @@ export const cloudService = {
     // 3. Eliminar el archivo
     const { error: aError } = await supabase.from('archives').delete().eq('id', archive.id);
     if (aError) throw aError;
+  },
+
+  async fetchBookings(businessId: string): Promise<Booking[]> {
+    if (!businessId) return [];
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('*')
+      .eq('business_id', businessId)
+      .order('delivery_date', { ascending: true })
+      .order('delivery_time', { ascending: true });
+    if (error) throw error;
+    return (data || []).map(item => ({
+      ...item,
+      orderDate: item.order_date,
+      deliveryDate: item.delivery_date,
+      deliveryTime: item.delivery_time,
+      buyerName: item.buyer_name,
+      isDistributor: item.is_distributor,
+      cashPayment: item.cash_payment,
+      transferPayment: item.transfer_payment,
+      cityNeighborhood: item.city_neighborhood,
+      deliveryFee: item.delivery_fee,
+      isHalfDeliveryPaid: item.is_half_delivery_paid
+    }));
+  },
+
+  async pushBooking(businessId: string, booking: Booking) {
+    const { error } = await supabase
+      .from('bookings')
+      .upsert({
+        id: booking.id,
+        order_date: booking.orderDate,
+        delivery_date: booking.deliveryDate,
+        delivery_time: booking.deliveryTime,
+        buyer_name: booking.buyerName,
+        quantity: booking.quantity,
+        reference: booking.reference,
+        is_distributor: booking.isDistributor,
+        cash_payment: booking.cashPayment,
+        transfer_payment: booking.transferPayment,
+        location: booking.location,
+        city_neighborhood: booking.cityNeighborhood,
+        delivery_fee: booking.deliveryFee,
+        is_half_delivery_paid: booking.isHalfDeliveryPaid,
+        business_id: businessId
+      });
+    if (error) throw error;
+  },
+
+  async deleteBooking(bookingId: string) {
+    const { error } = await supabase.from('bookings').delete().eq('id', bookingId);
+    if (error) throw error;
   }
 };

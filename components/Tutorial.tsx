@@ -135,6 +135,18 @@ export const Tutorial: React.FC<TutorialProps> = ({ isOpen, onClose, activeTab, 
       elementId: "nav-ia"
     },
     {
+      title: "Configuración del Negocio",
+      description: "Aquí conectas tu aplicación a la nube usando un código único. ¡Esto permite que varios teléfonos vean la misma información al mismo tiempo!",
+      targetTab: "nube",
+      elementId: "nav-nube"
+    },
+    {
+      title: "Agendación de Pedidos",
+      description: "¡Nueva sección! Aquí puedes agendar pedidos futuros con detalles de entrega, pagos divididos (efectivo/transferencia) y ubicación exacta.",
+      targetTab: "agendacion",
+      elementId: "nav-agendacion"
+    },
+    {
       title: "Navegación Principal",
       description: "Usa esta barra inferior para moverte rápidamente entre todas las secciones que acabamos de ver.",
       elementId: "tutorial-nav-bar"

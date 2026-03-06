@@ -61,3 +61,22 @@ export interface ClosingSchedule {
   time: string; // HH:mm format
   business_id: string;
 }
+
+export interface Booking {
+  id: string;
+  orderDate: string;
+  deliveryDate: string;
+  deliveryTime: string;
+  buyerName: string;
+  quantity: number;
+  reference: 'blanco' | 'amarillo';
+  isDistributor: boolean;
+  cashPayment: number;
+  transferPayment: number;
+  location: string;
+  cityNeighborhood: string;
+  deliveryFee: number | null; // null means no delivery fee
+  isHalfDeliveryPaid: boolean;
+  business_id: string;
+  created_at?: string;
+}

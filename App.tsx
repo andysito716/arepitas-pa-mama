@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Sale, BusinessStats, DailyArchive, Expense, ProductionCost, Note, Suggestion, ClosingSchedule } from './types';
+import { Sale, BusinessStats, DailyArchive, Expense, ProductionCost, Note, Suggestion, ClosingSchedule, Booking } from './types';
 import { Header } from './components/Header';
 import { Dashboard } from './components/Dashboard';
 import { SalesForm } from './components/SalesForm';
@@ -9,6 +9,7 @@ import { SalesTable } from './components/SalesTable';
 import { AIInsights } from './components/AIInsights';
 import { HistoryView } from './components/HistoryView';
 import { SyncManager } from './components/SyncManager';
+import { BookingsView } from './components/BookingsView';
 import { CostsView } from './components/CostsView';
 import { Calculator } from './components/Calculator';
 import { ConfirmModal } from './components/ConfirmModal';
@@ -18,7 +19,7 @@ import { SuggestionsSection } from './components/SuggestionsSection';
 import { ClosingScheduleModal } from './components/ClosingScheduleModal';
 import { cloudService } from './services/dbService';
 
-type Tab = 'ventas' | 'costos' | 'historial' | 'ia' | 'notas' | 'nube';
+type Tab = 'ventas' | 'costos' | 'historial' | 'ia' | 'notas' | 'nube' | 'agendacion';
 
 const SQL_SETUP = `-- 1. COPIA TODO ESTE CÓDIGO
 -- 2. VE A TU PANEL DE SUPABASE -> SQL EDITOR -> NUEVA CONSULTA
@@ -89,6 +90,42 @@ create table if not exists closing_schedules (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
+-- TABLA DE COSTOS DE PRODUCCIÓN
+create table if not exists production_costs (
+  id text primary key,
+  label text not null,
+  value numeric not null,
+  business_id text not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- TABLA DE CONFIGURACIÓN DEL NEGOCIO
+create table if not exists business_settings (
+  business_id text primary key,
+  selected_production_cost_id text,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- TABLA DE AGENDACIÓN (RESERVAS)
+create table if not exists bookings (
+  id uuid primary key default gen_random_uuid(),
+  order_date text not null,
+  delivery_date text not null,
+  delivery_time text not null,
+  buyer_name text not null,
+  quantity integer not null,
+  reference text not null, -- 'blanco' | 'amarillo'
+  is_distributor boolean not null default false,
+  cash_payment numeric not null default 0,
+  transfer_payment numeric not null default 0,
+  location text not null,
+  city_neighborhood text not null,
+  delivery_fee numeric, -- null if no delivery fee
+  is_half_delivery_paid boolean not null default false,
+  business_id text not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
 -- ASEGURAR COLUMNAS SI LAS TABLAS YA EXISTÍAN
 do $$ 
 begin 
@@ -100,6 +137,11 @@ begin
   end if;
   if not exists (select 1 from information_schema.columns where table_name='sales' and column_name='buyer_type') then
     alter table sales add column buyer_type text default 'comprador';
+  end if;
+  if not exists (select 1 from information_schema.columns where table_name = 'bookings' and column_name = 'delivery_date') then
+    alter table bookings add column delivery_date text;
+    alter table bookings add column delivery_time text;
+    alter table bookings add column order_date text;
   end if;
 end $$;
 
@@ -125,6 +167,7 @@ const App: React.FC = () => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [closingSchedules, setClosingSchedules] = useState<ClosingSchedule[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [isClosingModalOpen, setIsClosingModalOpen] = useState(false);
   const [lastAutoCloseCheck, setLastAutoCloseCheck] = useState<string | null>(null);
   
@@ -154,13 +197,16 @@ const App: React.FC = () => {
       const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
       await cloudService.cleanupOldSuggestions(businessId, oneWeekAgo);
 
-      const [remoteSales, remoteExpenses, remoteHistory, remoteNotes, remoteSuggestions, remoteSchedules] = await Promise.all([
+      const [remoteSales, remoteExpenses, remoteHistory, remoteNotes, remoteSuggestions, remoteSchedules, remoteProductionCosts, remoteSettings, remoteBookings] = await Promise.all([
         cloudService.fetchSales(businessId),
         cloudService.fetchExpenses(businessId),
         cloudService.fetchHistory(businessId),
         cloudService.fetchNotes(businessId),
         cloudService.fetchSuggestions(businessId),
-        cloudService.fetchClosingSchedules(businessId)
+        cloudService.fetchClosingSchedules(businessId),
+        cloudService.fetchProductionCosts(businessId),
+        cloudService.fetchBusinessSettings(businessId),
+        cloudService.fetchBookings(businessId)
       ]);
       setSales(remoteSales);
       setExpenses(remoteExpenses);
@@ -168,6 +214,13 @@ const App: React.FC = () => {
       setNotes(remoteNotes);
       setSuggestions(remoteSuggestions);
       setClosingSchedules(remoteSchedules);
+      setBookings(remoteBookings);
+      if (remoteProductionCosts.length > 0) {
+        setProductionCosts(remoteProductionCosts);
+      }
+      if (remoteSettings?.selected_production_cost_id) {
+        setSelectedCostId(remoteSettings.selected_production_cost_id);
+      }
     } catch (e: any) {
       console.error("Error en carga:", e);
       let errorMessage = e.message || "Error al conectar con la nube";
@@ -299,6 +352,31 @@ const App: React.FC = () => {
     if (businessId) await cloudService.deleteClosingSchedule(id);
   };
 
+  const handleAddBooking = async (data: Omit<Booking, 'id' | 'business_id'>) => {
+    const newBooking: Booking = {
+      ...data,
+      id: crypto.randomUUID(),
+      business_id: businessId
+    };
+    setBookings(prev => [...prev, newBooking].sort((a, b) => {
+      const dateCompare = a.deliveryDate.localeCompare(b.deliveryDate);
+      if (dateCompare !== 0) return dateCompare;
+      return a.deliveryTime.localeCompare(b.deliveryTime);
+    }));
+    if (businessId) {
+      try {
+        await cloudService.pushBooking(businessId, newBooking);
+      } catch (e: any) {
+        setDbError({ message: e.message, isTableError: true });
+      }
+    }
+  };
+
+  const handleDeleteBooking = async (id: string) => {
+    setBookings(prev => prev.filter(b => b.id !== id));
+    if (businessId) await cloudService.deleteBooking(id);
+  };
+
   // Lógica de auto-cierre
   useEffect(() => {
     const interval = setInterval(() => {
@@ -318,6 +396,54 @@ const App: React.FC = () => {
 
     return () => clearInterval(interval);
   }, [closingSchedules, sales, expenses, lastAutoCloseCheck]);
+
+  const handleAddProductionCost = async (value: number, label: string) => {
+    const newCost: ProductionCost = { id: crypto.randomUUID(), value, label };
+    setProductionCosts(prev => [...prev, newCost]);
+    setSelectedCostId(newCost.id);
+    if (businessId) {
+      try {
+        await cloudService.pushProductionCost(businessId, newCost);
+        await cloudService.updateBusinessSettings(businessId, { selected_production_cost_id: newCost.id });
+      } catch (e: any) {
+        console.error("Error al sincronizar costo:", e);
+      }
+    }
+  };
+
+  const handleDeleteProductionCost = async (id: string) => {
+    if (productionCosts.length <= 1) return alert("Debes tener al menos un costo guardado.");
+    const newCosts = productionCosts.filter(c => c.id !== id);
+    setProductionCosts(newCosts);
+    
+    let nextId = selectedCostId;
+    if (selectedCostId === id) {
+      nextId = newCosts[0].id;
+      setSelectedCostId(nextId);
+    }
+
+    if (businessId) {
+      try {
+        await cloudService.deleteProductionCost(id);
+        if (selectedCostId === id) {
+          await cloudService.updateBusinessSettings(businessId, { selected_production_cost_id: nextId });
+        }
+      } catch (e: any) {
+        console.error("Error al eliminar costo:", e);
+      }
+    }
+  };
+
+  const handleSelectProductionCost = async (id: string) => {
+    setSelectedCostId(id);
+    if (businessId) {
+      try {
+        await cloudService.updateBusinessSettings(businessId, { selected_production_cost_id: id });
+      } catch (e: any) {
+        console.error("Error al guardar configuración:", e);
+      }
+    }
+  };
 
   const handleNewDay = async () => {
     if (sales.length === 0 && expenses.length === 0) return alert("Nada que guardar.");
@@ -502,17 +628,9 @@ const App: React.FC = () => {
               expenses={expenses}
               productionCosts={productionCosts}
               selectedCostId={selectedCostId}
-              onSelectCost={setSelectedCostId}
-              onAddProductionCost={(val, label) => {
-                const newCost = { id: crypto.randomUUID(), value: val, label };
-                setProductionCosts(prev => [...prev, newCost]);
-                setSelectedCostId(newCost.id);
-              }}
-              onDeleteProductionCost={(id) => {
-                if (productionCosts.length <= 1) return alert("Debes tener al menos un costo guardado.");
-                setProductionCosts(prev => prev.filter(c => c.id !== id));
-                if (selectedCostId === id) setSelectedCostId(productionCosts[0].id);
-              }}
+              onSelectCost={handleSelectProductionCost}
+              onAddProductionCost={handleAddProductionCost}
+              onDeleteProductionCost={handleDeleteProductionCost}
               onOpenCalculator={() => setIsCalcOpen(true)}
               onDeleteExpense={handleDeleteExpense}
             />
@@ -529,6 +647,13 @@ const App: React.FC = () => {
         )}
 
         {activeTab === 'ia' && <AIInsights sales={sales} />}
+        {activeTab === 'agendacion' && (
+          <BookingsView 
+            bookings={bookings} 
+            onAddBooking={handleAddBooking} 
+            onDeleteBooking={handleDeleteBooking} 
+          />
+        )}
         {activeTab === 'nube' && <SyncManager businessId={businessId} onSetBusinessId={setBusinessId} isSyncing={isSyncing} />}
         </div>
       </main>
@@ -593,6 +718,7 @@ const App: React.FC = () => {
         <NavBtn id="nav-notas" active={activeTab === 'notas'} onClick={() => setActiveTab('notas')} icon="note" label="Notas" />
         <NavBtn id="nav-historial" active={activeTab === 'historial'} onClick={() => setActiveTab('historial')} icon="history" label="Historial" />
         <NavBtn id="nav-ia" active={activeTab === 'ia'} onClick={() => setActiveTab('ia')} icon="sparkles" label="IA" />
+        <NavBtn id="nav-agendacion" active={activeTab === 'agendacion'} onClick={() => setActiveTab('agendacion')} icon="calendar" label="Agenda" />
         <NavBtn id="nav-nube" active={activeTab === 'nube'} onClick={() => setActiveTab('nube')} icon="cloud" label="Negocio" />
       </nav>
     </div>
@@ -606,6 +732,7 @@ const NavBtn = ({ active, onClick, icon, label, id }: { active: boolean, onClick
     history: <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
     sparkles: <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>,
     note: <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>,
+    calendar: <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v14a2 2 0 002 2z" /></svg>,
     cloud: <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
   };
   return (
