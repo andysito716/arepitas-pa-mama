@@ -12,9 +12,8 @@ interface BookingsViewProps {
 export const BookingsView: React.FC<BookingsViewProps> = ({ bookings, onAddBooking, onDeleteBooking }) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formData, setFormData] = useState({
-    orderDate: new Date().toISOString().split('T')[0],
-    deliveryDate: new Date().toISOString().split('T')[0],
-    deliveryTime: '',
+    date: new Date().toISOString().split('T')[0],
+    time: '',
     buyerName: '',
     quantity: 1,
     reference: 'blanco' as 'blanco' | 'amarillo',
@@ -36,9 +35,8 @@ export const BookingsView: React.FC<BookingsViewProps> = ({ bookings, onAddBooki
     });
     setIsFormOpen(false);
     setFormData({
-      orderDate: new Date().toISOString().split('T')[0],
-      deliveryDate: new Date().toISOString().split('T')[0],
-      deliveryTime: '',
+      date: new Date().toISOString().split('T')[0],
+      time: '',
       buyerName: '',
       quantity: 1,
       reference: 'blanco',
@@ -74,36 +72,25 @@ export const BookingsView: React.FC<BookingsViewProps> = ({ bookings, onAddBooki
             className="bg-white p-6 rounded-[32px] border-2 border-blue-100 shadow-xl space-y-4"
           >
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Fecha de Pedido (Hoy)</label>
-                <input 
-                  type="date" 
-                  required
-                  value={formData.orderDate}
-                  onChange={e => setFormData({...formData, orderDate: e.target.value})}
-                  className="w-full px-4 py-3 bg-slate-50 text-slate-400 rounded-xl font-bold outline-none border border-slate-100"
-                />
-              </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-blue-600 uppercase ml-2">Fecha de Entrega</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Fecha</label>
                   <input 
                     type="date" 
                     required
-                    value={formData.deliveryDate}
-                    onChange={e => setFormData({...formData, deliveryDate: e.target.value})}
-                    className="w-full px-4 py-3 bg-blue-50 text-blue-900 rounded-xl font-bold outline-none border border-blue-100 focus:ring-2 focus:ring-blue-500"
+                    value={formData.date}
+                    onChange={e => setFormData({...formData, date: e.target.value})}
+                    className="w-full px-4 py-3 bg-slate-100 rounded-xl font-bold outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-blue-600 uppercase ml-2">Hora de Entrega</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Hora</label>
                   <input 
                     type="time" 
                     required
-                    value={formData.deliveryTime}
-                    onChange={e => setFormData({...formData, deliveryTime: e.target.value})}
-                    className="w-full px-4 py-3 bg-blue-50 text-blue-900 rounded-xl font-bold outline-none border border-blue-100 focus:ring-2 focus:ring-blue-500"
+                    value={formData.time}
+                    onChange={e => setFormData({...formData, time: e.target.value})}
+                    className="w-full px-4 py-3 bg-slate-100 rounded-xl font-bold outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               </div>
@@ -293,10 +280,7 @@ export const BookingsView: React.FC<BookingsViewProps> = ({ bookings, onAddBooki
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[9px] font-black uppercase rounded-full">
-                      Entrega: {booking.deliveryDate} - {booking.deliveryTime}
-                    </span>
-                    <span className="px-2 py-0.5 bg-slate-50 text-slate-400 text-[9px] font-black uppercase rounded-full">
-                      Pedido: {booking.orderDate}
+                      {booking.date} - {booking.time}
                     </span>
                     {booking.isDistributor && (
                       <span className="px-2 py-0.5 bg-amber-50 text-amber-600 text-[9px] font-black uppercase rounded-full">
