@@ -370,24 +370,31 @@ export const BookingsView: React.FC<BookingsViewProps> = ({ bookings, onAddBooki
               </div>
 
               <div className="pt-3 flex gap-2">
-                <button
-                  onClick={() => onDeliverBooking(booking, true)}
-                  className="flex-1 py-3 bg-emerald-600 text-white font-black rounded-xl text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-100 active:scale-95 transition-all flex items-center justify-center gap-2"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Entregar y Vender
-                </button>
-                <button
-                  onClick={() => onDeliverBooking(booking, false)}
-                  className="flex-1 py-3 bg-blue-50 text-blue-600 font-black rounded-xl text-[10px] uppercase tracking-widest border border-blue-100 active:scale-95 transition-all flex items-center justify-center gap-2"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Solo Entregar
-                </button>
+                <div className="flex-1 flex flex-col gap-1">
+                  <button
+                    onClick={() => onDeliverBooking(booking, true)}
+                    className="w-full py-3 bg-emerald-600 text-white font-black rounded-xl text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-100 active:scale-95 transition-all flex items-center justify-center gap-2"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Entregar y Vender
+                  </button>
+                  <p className="text-[8px] text-emerald-600 font-bold text-center leading-tight px-1">Registra venta hoy y borra de agenda</p>
+                </div>
+
+                <div className="flex-1 flex flex-col gap-1">
+                  <button
+                    onClick={() => onDeliverBooking(booking, false)}
+                    className="w-full py-3 bg-blue-50 text-blue-600 font-black rounded-xl text-[10px] uppercase tracking-widest border border-blue-100 active:scale-95 transition-all flex items-center justify-center gap-2"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Solo Entregar
+                  </button>
+                  <p className="text-[8px] text-blue-400 font-bold text-center leading-tight px-1">Solo borra de agenda (si ya la registraste)</p>
+                </div>
               </div>
             </motion.div>
           ))
