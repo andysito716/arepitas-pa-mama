@@ -7,9 +7,10 @@ interface ConfirmModalProps {
   message: string;
   onConfirm: () => void;
   onCancel: () => void;
+  confirmText?: string;
 }
 
-export const ConfirmModal: React.FC<ConfirmModalProps> = ({ isOpen, title, message, onConfirm, onCancel }) => {
+export const ConfirmModal: React.FC<ConfirmModalProps> = ({ isOpen, title, message, onConfirm, onCancel, confirmText = "Sí, reabrir" }) => {
   if (!isOpen) return null;
 
   return (
@@ -41,7 +42,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({ isOpen, title, messa
               onClick={onConfirm}
               className="py-4 bg-blue-600 text-white font-black rounded-2xl shadow-lg shadow-blue-200 active:scale-95 transition-all uppercase text-xs"
             >
-              Sí, reabrir
+              {confirmText}
             </button>
           </div>
         </div>

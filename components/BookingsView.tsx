@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Booking } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -7,9 +7,12 @@ interface BookingsViewProps {
   bookings: Booking[];
   onAddBooking: (data: Omit<Booking, 'id' | 'business_id'>) => void;
   onDeleteBooking: (id: string) => void;
+  onDeliverBooking: (booking: Booking, registerAsSale: boolean) => void;
+  prefillData?: { buyerName: string; quantity: number; isDistributor: boolean } | null;
+  onClearPrefill?: () => void;
 }
 
-export const BookingsView: React.FC<BookingsViewProps> = ({ bookings, onAddBooking, onDeleteBooking }) => {
+export const BookingsView: React.FC<BookingsViewProps> = ({ bookings, onAddBooking, onDeleteBooking, onDeliverBooking, prefillData, onClearPrefill }) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formData, setFormData] = useState({
     orderDate: new Date().toISOString().split('T')[0],
@@ -27,6 +30,19 @@ export const BookingsView: React.FC<BookingsViewProps> = ({ bookings, onAddBooki
     noDeliveryFee: false,
     isHalfDeliveryPaid: false
   });
+
+  useEffect(() => {
+    if (prefillData) {
+      setFormData(prev => ({
+        ...prev,
+        buyerName: prefillData.buyerName,
+        quantity: prefillData.quantity,
+        isDistributor: prefillData.isDistributor
+      }));
+      setIsFormOpen(true);
+      onClearPrefill?.();
+    }
+  }, [prefillData, onClearPrefill]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -351,6 +367,27 @@ export const BookingsView: React.FC<BookingsViewProps> = ({ bookings, onAddBooki
                     {booking.isHalfDeliveryPaid ? '50% Pagado' : '50% Pendiente'}
                   </span>
                 )}
+              </div>
+
+              <div className="pt-3 flex gap-2">
+                <button
+                  onClick={() => onDeliverBooking(booking, true)}
+                  className="flex-1 py-3 bg-emerald-600 text-white font-black rounded-xl text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-100 active:scale-95 transition-all flex items-center justify-center gap-2"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Entregar y Vender
+                </button>
+                <button
+                  onClick={() => onDeliverBooking(booking, false)}
+                  className="flex-1 py-3 bg-blue-50 text-blue-600 font-black rounded-xl text-[10px] uppercase tracking-widest border border-blue-100 active:scale-95 transition-all flex items-center justify-center gap-2"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Solo Entregar
+                </button>
               </div>
             </motion.div>
           ))

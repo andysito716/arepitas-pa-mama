@@ -158,6 +158,8 @@ const App: React.FC = () => {
   const [dbError, setDbError] = useState<{message: string, isTableError: boolean} | null>(null);
   
   const [archiveToEdit, setArchiveToEdit] = useState<DailyArchive | null>(null);
+  const [archiveToDelete, setArchiveToDelete] = useState<DailyArchive | null>(null);
+  const [bookingPrefill, setBookingPrefill] = useState<any>(null);
   
   const [businessId, setBusinessId] = useState(() => localStorage.getItem('business_id') || '');
 
@@ -248,13 +250,23 @@ const App: React.FC = () => {
     }
   }, [businessId, loadData]);
 
-  const handleAddSale = async (data: Omit<Sale, 'id' | 'cost'>) => {
+  const handleAddSale = async (data: Omit<Sale, 'id' | 'cost'>, andBooking?: boolean) => {
     const newSale: Sale = { 
       ...data, 
       id: crypto.randomUUID(),
       cost: activeProductionCost 
     };
     setSales(prev => [newSale, ...prev]);
+    
+    if (andBooking) {
+      setBookingPrefill({
+        buyerName: data.buyerName,
+        quantity: data.quantity,
+        isDistributor: data.buyerType === 'distribuidor'
+      });
+      setActiveTab('agendacion');
+    }
+
     if (businessId) {
       try {
         await cloudService.pushSale(businessId, newSale);
@@ -377,6 +389,20 @@ const App: React.FC = () => {
     if (businessId) await cloudService.deleteBooking(id);
   };
 
+  const handleDeliverBooking = async (booking: Booking, registerAsSale: boolean) => {
+    if (registerAsSale) {
+      await handleAddSale({
+        productName: `Pedido: ${booking.reference}`,
+        price: (booking.cashPayment + booking.transferPayment) / booking.quantity,
+        quantity: booking.quantity,
+        buyerName: booking.buyerName,
+        buyerType: booking.isDistributor ? 'distribuidor' : 'comprador',
+        date: new Date().toLocaleDateString('es-ES')
+      });
+    }
+    await handleDeleteBooking(booking.id);
+  };
+
   // Lógica de auto-cierre
   useEffect(() => {
     const interval = setInterval(() => {
@@ -480,6 +506,24 @@ const App: React.FC = () => {
 
   const handleEditDay = (archive: DailyArchive) => {
     setArchiveToEdit(archive);
+  };
+
+  const confirmDeleteDay = async () => {
+    if (!archiveToDelete) return;
+    const id = archiveToDelete.id;
+    setArchiveToDelete(null);
+    
+    setIsSyncing(true);
+    try {
+      if (businessId) {
+        await cloudService.deleteArchive(id);
+        await loadData();
+      }
+    } catch (e: any) {
+      setDbError({ message: e.message, isTableError: true });
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const confirmEditDay = async () => {
@@ -640,7 +684,7 @@ const App: React.FC = () => {
         {activeTab === 'historial' && (
           <HistoryView 
             history={history} 
-            onDeleteDay={(id) => cloudService.deleteArchive(id).then(loadData)} 
+            onDeleteDay={(archive) => setArchiveToDelete(archive)} 
             onEditDay={handleEditDay}
             onQuickAdd={() => {}}
           />
@@ -652,6 +696,9 @@ const App: React.FC = () => {
             bookings={bookings} 
             onAddBooking={handleAddBooking} 
             onDeleteBooking={handleDeleteBooking} 
+            onDeliverBooking={handleDeliverBooking}
+            prefillData={bookingPrefill}
+            onClearPrefill={() => setBookingPrefill(null)}
           />
         )}
         {activeTab === 'nube' && <SyncManager businessId={businessId} onSetBusinessId={setBusinessId} isSyncing={isSyncing} />}
@@ -710,6 +757,15 @@ const App: React.FC = () => {
         message={`¿Quieres reabrir el cierre del ${archiveToEdit?.date}? Las ventas y gastos volverán a sus secciones originales para que puedas editarlos.`}
         onConfirm={confirmEditDay}
         onCancel={() => setArchiveToEdit(null)}
+      />
+
+      <ConfirmModal 
+        isOpen={!!archiveToDelete}
+        title="¿Eliminar Cierre?"
+        message={`¿Estás seguro de que quieres eliminar permanentemente el cierre del ${archiveToDelete?.date}? Esta acción no se puede deshacer.`}
+        onConfirm={confirmDeleteDay}
+        onCancel={() => setArchiveToDelete(null)}
+        confirmText="Sí, borrar"
       />
 
       <nav id="tutorial-nav-bar" className="bg-white/90 backdrop-blur-xl border-t border-slate-200 fixed bottom-0 left-0 right-0 z-50 h-20 flex justify-around items-center px-2 pb-2">

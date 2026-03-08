@@ -147,6 +147,11 @@ export const Tutorial: React.FC<TutorialProps> = ({ isOpen, onClose, activeTab, 
       elementId: "nav-agendacion"
     },
     {
+      title: "Entregar Pedidos",
+      description: "Cuando entregues un pedido, usa 'Entregar y Vender' para registrar la venta automáticamente hoy. Si ya la registraste antes, usa 'Solo Entregar' para limpiar tu agenda.",
+      targetTab: "agendacion"
+    },
+    {
       title: "Navegación Principal",
       description: "Usa esta barra inferior para moverte rápidamente entre todas las secciones que acabamos de ver.",
       elementId: "tutorial-nav-bar"

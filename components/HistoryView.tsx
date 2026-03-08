@@ -7,7 +7,7 @@ import ExcelJS from 'exceljs';
 
 interface HistoryViewProps {
   history: DailyArchive[];
-  onDeleteDay: (id: string) => void;
+  onDeleteDay: (archive: DailyArchive) => void;
   onEditDay: (archive: DailyArchive) => void;
   onQuickAdd: (archive: DailyArchive) => void;
 }
@@ -204,7 +204,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onDeleteDay, 
 
                   {/* BOTÓN DE BORRADO */}
                   <button
-                    onClick={() => onDeleteDay(day.id)}
+                    onClick={() => onDeleteDay(day)}
                     className="flex items-center justify-center w-8 h-8 bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white rounded-lg transition-all border border-red-500/30 active:scale-90"
                     title="Borrar esta jornada permanentemente"
                   >

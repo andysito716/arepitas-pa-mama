@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Sale } from '../types';
 
 interface SalesFormProps {
-  onAddSale: (sale: Omit<Sale, 'id' | 'cost'>) => void;
+  onAddSale: (sale: Omit<Sale, 'id' | 'cost'>, andBooking?: boolean) => void;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -17,7 +17,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ onAddSale, isOpen, onClose
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent, andBooking: boolean = false) => {
     e.preventDefault();
     if (!productName || !price || !buyerName) return;
 
@@ -28,7 +28,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ onAddSale, isOpen, onClose
       buyerName,
       buyerType,
       date: new Date().toLocaleDateString('es-ES'),
-    });
+    }, andBooking);
 
     setProductName('');
     setPrice('');
@@ -133,6 +133,14 @@ export const SalesForm: React.FC<SalesFormProps> = ({ onAddSale, isOpen, onClose
             className="w-full py-4 bg-blue-600 text-white text-lg font-black rounded-2xl shadow-xl shadow-blue-200 active:scale-95 transition-all mt-4"
           >
             CONFIRMAR VENTA
+          </button>
+
+          <button
+            type="button"
+            onClick={(e) => handleSubmit(e as any, true)}
+            className="w-full py-4 bg-amber-500 text-white text-lg font-black rounded-2xl shadow-xl shadow-amber-100 active:scale-95 transition-all mt-2"
+          >
+            CONFIRMAR Y AGENDAR
           </button>
         </form>
       </div>
