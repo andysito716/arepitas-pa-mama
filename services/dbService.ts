@@ -378,11 +378,14 @@ export const cloudService = {
       .from('bookings')
       .select('*')
       .eq('business_id', businessId)
-      .order('date', { ascending: true })
-      .order('time', { ascending: true });
+      .order('delivery_date', { ascending: true })
+      .order('delivery_time', { ascending: true });
     if (error) throw error;
     return (data || []).map(item => ({
       ...item,
+      orderDate: item.order_date,
+      deliveryDate: item.delivery_date,
+      deliveryTime: item.delivery_time,
       buyerName: item.buyer_name,
       isDistributor: item.is_distributor,
       cashPayment: item.cash_payment,
@@ -398,8 +401,9 @@ export const cloudService = {
       .from('bookings')
       .upsert({
         id: booking.id,
-        date: booking.date,
-        time: booking.time,
+        order_date: booking.orderDate,
+        delivery_date: booking.deliveryDate,
+        delivery_time: booking.deliveryTime,
         buyer_name: booking.buyerName,
         quantity: booking.quantity,
         reference: booking.reference,

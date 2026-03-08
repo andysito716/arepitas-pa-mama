@@ -64,8 +64,9 @@ export interface ClosingSchedule {
 
 export interface Booking {
   id: string;
-  date: string;
-  time: string;
+  orderDate: string;
+  deliveryDate: string;
+  deliveryTime: string;
   buyerName: string;
   quantity: number;
   reference: 'blanco' | 'amarillo';

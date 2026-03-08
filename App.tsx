@@ -109,8 +109,9 @@ create table if not exists business_settings (
 -- TABLA DE AGENDACIÓN (RESERVAS)
 create table if not exists bookings (
   id uuid primary key default gen_random_uuid(),
-  date text not null,
-  time text not null,
+  order_date text not null,
+  delivery_date text not null,
+  delivery_time text not null,
   buyer_name text not null,
   quantity integer not null,
   reference text not null, -- 'blanco' | 'amarillo'
@@ -136,6 +137,11 @@ begin
   end if;
   if not exists (select 1 from information_schema.columns where table_name='sales' and column_name='buyer_type') then
     alter table sales add column buyer_type text default 'comprador';
+  end if;
+  if not exists (select 1 from information_schema.columns where table_name = 'bookings' and column_name = 'delivery_date') then
+    alter table bookings add column delivery_date text;
+    alter table bookings add column delivery_time text;
+    alter table bookings add column order_date text;
   end if;
 end $$;
 
@@ -353,9 +359,9 @@ const App: React.FC = () => {
       business_id: businessId
     };
     setBookings(prev => [...prev, newBooking].sort((a, b) => {
-      const dateCompare = a.date.localeCompare(b.date);
+      const dateCompare = a.deliveryDate.localeCompare(b.deliveryDate);
       if (dateCompare !== 0) return dateCompare;
-      return a.time.localeCompare(b.time);
+      return a.deliveryTime.localeCompare(b.deliveryTime);
     }));
     if (businessId) {
       try {
