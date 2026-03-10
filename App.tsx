@@ -508,6 +508,20 @@ const App: React.FC = () => {
     setArchiveToEdit(archive);
   };
 
+  const handleUpdateArchiveDate = async (archiveId: string, newDate: string) => {
+    setIsSyncing(true);
+    try {
+      if (businessId) {
+        await cloudService.updateArchiveDate(archiveId, newDate);
+        await loadData();
+      }
+    } catch (e: any) {
+      setDbError({ message: e.message, isTableError: true });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const confirmDeleteDay = async () => {
     if (!archiveToDelete) return;
     const id = archiveToDelete.id;
@@ -687,6 +701,7 @@ const App: React.FC = () => {
             onDeleteDay={(archive) => setArchiveToDelete(archive)} 
             onEditDay={handleEditDay}
             onQuickAdd={() => {}}
+            onUpdateDate={handleUpdateArchiveDate}
           />
         )}
 

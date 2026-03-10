@@ -10,9 +10,35 @@ interface HistoryViewProps {
   onDeleteDay: (archive: DailyArchive) => void;
   onEditDay: (archive: DailyArchive) => void;
   onQuickAdd: (archive: DailyArchive) => void;
+  onUpdateDate: (archiveId: string, newDate: string) => void;
 }
 
-export const HistoryView: React.FC<HistoryViewProps> = ({ history, onDeleteDay, onEditDay, onQuickAdd }) => {
+export const HistoryView: React.FC<HistoryViewProps> = ({ history, onDeleteDay, onEditDay, onQuickAdd, onUpdateDate }) => {
+  const [editingDateId, setEditingDateId] = React.useState<string | null>(null);
+  const [tempDate, setTempDate] = React.useState("");
+  const [expandedSales, setExpandedSales] = React.useState<Record<string, boolean>>({});
+  const [expandedExpenses, setExpandedExpenses] = React.useState<Record<string, boolean>>({});
+
+  const toggleSales = (id: string) => {
+    setExpandedSales(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const toggleExpenses = (id: string) => {
+    setExpandedExpenses(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleDateEdit = (archive: DailyArchive) => {
+    setEditingDateId(archive.id);
+    setTempDate(archive.date);
+  };
+
+  const handleSaveDate = (archiveId: string) => {
+    if (tempDate.trim()) {
+      onUpdateDate(archiveId, tempDate);
+    }
+    setEditingDateId(null);
+  };
+
   const downloadExcel = async () => {
     const lastMonth = history.filter(day => {
       const timestamp = parseInt(day.id.split('-')[1]);
@@ -165,7 +191,46 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onDeleteDay, 
             <div className="flex justify-between items-center">
               <div className="flex-1 min-w-0 pr-4">
                 <p className="text-[10px] font-bold text-slate-400 uppercase leading-none mb-1">Cierre de Caja</p>
-                <h4 className="text-sm font-black truncate capitalize">{day.date}</h4>
+                {editingDateId === day.id ? (
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="text"
+                      value={tempDate}
+                      onChange={(e) => setTempDate(e.target.value)}
+                      className="bg-slate-700 text-white text-sm font-black px-2 py-1 rounded border border-slate-600 outline-none focus:border-blue-500 w-32"
+                      autoFocus
+                    />
+                    <button 
+                      onClick={() => handleSaveDate(day.id)}
+                      className="p-1 bg-emerald-500 text-white rounded hover:bg-emerald-600 transition-colors"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </button>
+                    <button 
+                      onClick={() => setEditingDateId(null)}
+                      className="p-1 bg-slate-600 text-white rounded hover:bg-slate-500 transition-colors"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 group/date">
+                    <h4 className="text-sm font-black truncate capitalize">{day.date}</h4>
+                    <button 
+                      onClick={() => handleDateEdit(day)}
+                      className="opacity-0 group-hover/date:opacity-100 p-1 text-slate-500 hover:text-blue-400 transition-all"
+                      title="Editar fecha de este cierre"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <div className="text-right mr-2 flex items-center gap-3">
@@ -223,7 +288,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onDeleteDay, 
             <div className="space-y-2">
               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Ventas ({day.sales.length})</p>
               <div className="space-y-1.5">
-                {day.sales.slice(0, 4).map((s) => (
+                {(expandedSales[day.id] ? day.sales : day.sales.slice(0, 4)).map((s) => (
                   <div key={s.id} className="flex justify-between items-center text-[10px] bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
                     <div className="truncate pr-1">
                       <span className="font-black text-slate-700 block leading-tight">{s.buyerName}</span>
@@ -235,9 +300,12 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onDeleteDay, 
                   </div>
                 ))}
                 {day.sales.length > 4 && (
-                  <p className="text-[8px] text-center text-slate-400 font-bold py-1">
-                    + {day.sales.length - 4} más
-                  </p>
+                  <button 
+                    onClick={() => toggleSales(day.id)}
+                    className="w-full py-1 text-[8px] text-center text-blue-500 font-black uppercase tracking-widest hover:bg-blue-50 rounded-lg transition-all"
+                  >
+                    {expandedSales[day.id] ? 'Mostrar Menos' : `+ ${day.sales.length - 4} más`}
+                  </button>
                 )}
               </div>
             </div>
@@ -247,7 +315,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onDeleteDay, 
               <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest ml-1">Costos y Gastos</p>
               <div className="space-y-1.5">
                 {/* Gastos Directos */}
-                {day.expenses.slice(0, 2).map((e) => (
+                {(expandedExpenses[day.id] ? day.expenses : day.expenses.slice(0, 2)).map((e) => (
                   <div key={e.id} className="flex justify-between items-center text-[10px] bg-amber-50 p-2 rounded-xl border border-amber-100 shadow-sm">
                     <div className="truncate pr-1">
                       <span className="font-black text-amber-800 block leading-tight">{e.description}</span>
@@ -271,9 +339,12 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onDeleteDay, 
                 </div>
 
                 {(day.expenses.length > 2) && (
-                  <p className="text-[8px] text-center text-slate-400 font-bold py-1">
-                    + {day.expenses.length - 2} gastos más
-                  </p>
+                  <button 
+                    onClick={() => toggleExpenses(day.id)}
+                    className="w-full py-1 text-[8px] text-center text-amber-600 font-black uppercase tracking-widest hover:bg-amber-100 rounded-lg transition-all"
+                  >
+                    {expandedExpenses[day.id] ? 'Mostrar Menos' : `+ ${day.expenses.length - 2} más`}
+                  </button>
                 )}
               </div>
             </div>

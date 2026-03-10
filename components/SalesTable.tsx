@@ -27,6 +27,9 @@ export const SalesTable: React.FC<SalesTableProps> = ({ sales, onDeleteSale }) =
               <h4 className="text-sm font-black text-slate-800 truncate">{sale.productName}</h4>
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight truncate">{sale.buyerName}</span>
+                <span className="text-slate-300">•</span>
+                <span className="text-[9px] font-bold text-slate-400">{sale.date}</span>
+                <span className="text-slate-300">•</span>
                 <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase ${sale.buyerType === 'distribuidor' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>
                   {sale.buyerType === 'distribuidor' ? 'Dist' : 'Comp'}
                 </span>

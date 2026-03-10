@@ -333,6 +333,14 @@ export const cloudService = {
     await supabase.from('archives').delete().eq('id', archiveId);
   },
 
+  async updateArchiveDate(archiveId: string, newDate: string) {
+    const { error } = await supabase
+      .from('archives')
+      .update({ date: newDate })
+      .eq('id', archiveId);
+    if (error) throw error;
+  },
+
   async restoreArchive(businessId: string, archive: DailyArchive) {
     // 1. Reinsertar ventas
     const salesToInsert = archive.sales.map(s => ({
