@@ -328,7 +328,7 @@ export const cloudService = {
     }
   },
 
-  async saveArchive(businessId: string, archive: DailyArchive) {
+  async saveArchive(businessId: string, archive: DailyArchive, salesToKeep: Sale[] = [], expensesToKeep: Expense[] = []) {
     const { error: archiveError } = await supabase.from('archives').insert({
       id: archive.id,
       date: archive.date,
@@ -342,9 +342,13 @@ export const cloudService = {
 
     if (archiveError) throw archiveError;
 
-    // Limpiar temporales
-    await supabase.from('sales').delete().eq('business_id', businessId);
-    await supabase.from('expenses').delete().eq('business_id', businessId);
+    // Limpiar temporales: Solo eliminar las ventas que fueron archivadas
+    for (const sale of archive.sales) {
+      await supabase.from('sales').delete().eq('id', sale.id);
+    }
+    for (const exp of archive.expenses) {
+      await supabase.from('expenses').delete().eq('id', exp.id);
+    }
   },
 
   async deleteArchive(archiveId: string) {

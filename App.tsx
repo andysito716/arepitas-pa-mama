@@ -468,14 +468,38 @@ const App: React.FC = () => {
   };
 
   const handleConfirmImportDay = async (daySales: Omit<Sale, 'id' | 'cost'>[]) => {
+    if (daySales.length === 0) return;
     setIsSyncing(true);
     try {
-      // Sort sales by date just in case, though the modal already groups them
-      for (const saleData of daySales) {
-        await handleAddSale(saleData);
+      const dayDate = daySales[0].date;
+      const salesToArchive: Sale[] = daySales.map(s => ({
+        ...s,
+        id: crypto.randomUUID(),
+        cost: activeProductionCost
+      }));
+
+      const totalRevenue = salesToArchive.reduce((acc, s) => acc + (s.price * s.quantity), 0);
+      const totalCogs = salesToArchive.reduce((acc, s) => acc + (s.cost * s.quantity), 0);
+      const totalProfit = totalRevenue - totalCogs;
+
+      const archive: DailyArchive = {
+        id: `archive-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        date: dayDate, // Usar la fecha real detectada/editada
+        sales: salesToArchive,
+        expenses: [],
+        totalRevenue,
+        totalProfit,
+        totalItems: salesToArchive.reduce((acc, s) => acc + s.quantity, 0)
+      };
+
+      if (businessId) {
+        // Guardamos directamente en el historial sin pasar por la lista de "hoy"
+        await cloudService.saveArchive(businessId, archive);
+        await loadData();
       }
     } catch (e) {
-      alert("Hubo un error al registrar algunas ventas.");
+      console.error(e);
+      alert("Hubo un error al registrar las ventas de este día.");
     } finally {
       setIsSyncing(false);
     }
@@ -593,9 +617,14 @@ const App: React.FC = () => {
     const totalExpenses = expenses.reduce((acc, e) => acc + e.amount, 0);
     const totalProfit = totalRevenue - totalCogs - totalExpenses;
     
+    // Obtener la fecha de la última venta para que el cierre tenga la fecha correcta
+    const latestSaleDate = sales.length > 0 
+      ? sales.sort((a,b) => b.date.split('/').reverse().join('-').localeCompare(a.date.split('/').reverse().join('-')))[0].date
+      : new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+
     const archive: DailyArchive = {
       id: `archive-${Date.now()}`,
-      date: new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
+      date: latestSaleDate,
       sales: [...sales],
       expenses: [...expenses],
       totalRevenue,
@@ -835,7 +864,14 @@ const App: React.FC = () => {
           />
         )}
 
-        {activeTab === 'ia' && <AIInsights sales={sales} advancedAIEnabled={advancedAIEnabled} onToggleAdvancedAI={handleToggleAdvancedAI} />}
+        {activeTab === 'ia' && (
+          <AIInsights 
+            sales={sales} 
+            history={history}
+            advancedAIEnabled={advancedAIEnabled} 
+            onToggleAdvancedAI={handleToggleAdvancedAI} 
+          />
+        )}
         {activeTab === 'agendacion' && (
           <BookingsView 
             bookings={bookings} 

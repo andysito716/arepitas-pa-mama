@@ -1,17 +1,54 @@
 
-import React, { useState } from 'react';
-import { getBusinessInsights } from '../services/geminiService';
-import { Sale } from '../types';
+import React, { useState, useRef, useEffect } from 'react';
+import { getBusinessInsights, askBusinessChat } from '../services/geminiService';
+import { Sale, DailyArchive } from '../types';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface AIInsightsProps {
   sales: Sale[];
+  history: DailyArchive[];
   advancedAIEnabled: boolean;
   onToggleAdvancedAI: (enabled: boolean) => void;
 }
 
-export const AIInsights: React.FC<AIInsightsProps> = ({ sales, advancedAIEnabled, onToggleAdvancedAI }) => {
-  const [insight, setInsight] = useState<string | null>(null);
+interface Message {
+  id: string;
+  role: 'user' | 'ai';
+  content: string;
+}
+
+export const AIInsights: React.FC<AIInsightsProps> = ({ sales, history, advancedAIEnabled, onToggleAdvancedAI }) => {
+  const [insight, setInsight] = useState<string | null>(() => {
+    return localStorage.getItem('ai_last_insight');
+  });
   const [loading, setLoading] = useState(false);
+  
+  // Chat State
+  const [messages, setMessages] = useState<Message[]>(() => {
+    const saved = localStorage.getItem('ai_chat_messages');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [inputMessage, setInputMessage] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    localStorage.setItem('ai_chat_messages', JSON.stringify(messages));
+  }, [messages]);
+
+  useEffect(() => {
+    if (insight) {
+      localStorage.setItem('ai_last_insight', insight);
+    }
+  }, [insight]);
+
+  const scrollToBottom = () => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isTyping]);
 
   const handleGenerate = async () => {
     if (sales.length === 0) return;
@@ -21,8 +58,27 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ sales, advancedAIEnabled
     setLoading(false);
   };
 
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!inputMessage.trim() || isTyping) return;
+
+    const userMsg = inputMessage.trim();
+    setInputMessage('');
+    setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'user', content: userMsg }]);
+    setIsTyping(true);
+
+    try {
+      const aiResponse = await askBusinessChat(userMsg, { sales, history });
+      setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'ai', content: aiResponse }]);
+    } catch (error) {
+      setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'ai', content: "Lo siento, tuve un problema al procesar tu duda. ¿Podrías repetirme la pregunta?" }]);
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20">
       {/* Selector IA Avanzada */}
       <div className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm">
         <div className="flex items-center justify-between">
@@ -47,7 +103,6 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ sales, advancedAIEnabled
       </div>
 
       <div className={`bg-gradient-to-br transition-all duration-500 rounded-[40px] p-8 text-white shadow-2xl relative overflow-hidden ${advancedAIEnabled ? 'from-indigo-600 via-purple-600 to-indigo-700' : 'from-slate-700 to-slate-800'}`}>
-        {/* Decoración IA */}
         <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl" />
         <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-indigo-400/20 rounded-full blur-3xl" />
 
@@ -90,12 +145,10 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ sales, advancedAIEnabled
             </button>
           </div>
 
-          <div className="min-h-[200px] flex flex-col items-center justify-center">
+          <div className="min-h-[200px]">
             {insight ? (
               <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-white/20 animate-in fade-in slide-in-from-bottom-4 duration-500 w-full prose prose-invert max-w-none prose-sm sm:prose-base font-bold text-white/90 leading-relaxed">
-                <div className="whitespace-pre-wrap">
-                  {insight}
-                </div>
+                <div className="whitespace-pre-wrap">{insight}</div>
               </div>
             ) : (
               <div className="text-center p-10 opacity-40">
@@ -104,12 +157,119 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ sales, advancedAIEnabled
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <p className="uppercase text-xs font-black tracking-[0.2em]">Esperando datos...</p>
-                <p className="text-[10px] mt-2 italic">Pulsa el botón de arriba para iniciar la magia</p>
+                <p className="uppercase text-xs font-black tracking-[0.2em]">Cámara de Estrategia</p>
               </div>
             )}
           </div>
         </div>
+      </div>
+
+      {/* Chat con Asesor */}
+      <div className="bg-white rounded-[40px] border border-slate-200 shadow-xl overflow-hidden flex flex-col min-h-[500px] h-[600px] max-h-[70vh]">
+        <div className="bg-slate-800 p-6 text-white flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-indigo-500 rounded-2xl flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="font-black uppercase tracking-tight text-lg">Chat con el Asesor</h3>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pregúntame sobre tus ventas o el programa</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => {
+              if(confirm("¿Quieres borrar toda la conversación?")) {
+                setMessages([]);
+                localStorage.removeItem('ai_chat_messages');
+              }
+            }}
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white"
+            title="Borrar chat"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar bg-slate-50">
+          <AnimatePresence initial={false}>
+            {messages.length === 0 && !isTyping && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-center py-20"
+              >
+                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm text-slate-300">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                </div>
+                <p className="text-slate-400 text-xs font-bold uppercase tracking-widest leading-relaxed">
+                  ¿Tienes dudas sobre tus ventas?<br/>¿O sobre cómo funciona el Excel?
+                </p>
+                <div className="flex flex-wrap justify-center gap-2 mt-6">
+                  {['¿Cómo voy hoy?', '¿Cómo subo mi Excel?', 'Dime un consejo'].map(hint => (
+                    <button 
+                      key={hint}
+                      onClick={() => { setInputMessage(hint); }}
+                      className="px-4 py-2 bg-white border border-slate-200 rounded-full text-[10px] font-black uppercase text-indigo-600 hover:bg-indigo-50 transition-all shadow-sm"
+                    >
+                      {hint}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+            {messages.map((msg) => (
+              <motion.div 
+                key={msg.id}
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div className={`max-w-[85%] p-4 rounded-[24px] text-sm font-bold leading-relaxed shadow-sm ${msg.role === 'user' ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white text-slate-700 border border-slate-200 rounded-bl-none'}`}>
+                  {msg.content}
+                </div>
+              </motion.div>
+            ))}
+            {isTyping && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex justify-start"
+              >
+                <div className="bg-white p-4 rounded-[24px] rounded-bl-none border border-slate-200 flex gap-1">
+                  <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
+              </motion.div>
+            )}
+            <div ref={chatEndRef} />
+          </AnimatePresence>
+        </div>
+
+        <form onSubmit={handleSendMessage} className="p-4 bg-white border-t border-slate-100 flex gap-2">
+          <input 
+            type="text" 
+            value={inputMessage}
+            onChange={(e) => setInputMessage(e.target.value)}
+            placeholder="Escribe tu mensaje..."
+            className="flex-1 bg-slate-50 border-none rounded-2xl px-6 font-bold text-sm focus:ring-2 focus:ring-indigo-100"
+          />
+          <button 
+            type="submit"
+            disabled={!inputMessage.trim() || isTyping}
+            className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-100 active:scale-90 transition-all disabled:opacity-50"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 transform rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+          </button>
+        </form>
       </div>
       
       {sales.length === 0 && (
@@ -119,7 +279,7 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ sales, advancedAIEnabled
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <p className="text-amber-800 font-bold text-xs uppercase leading-tight">Necesitas registrar al menos una venta para que la IA pueda analizar tu negocio.</p>
+          <p className="text-amber-800 font-bold text-xs uppercase leading-tight">Necesitas registrar al menos una venta para un análisis completo.</p>
         </div>
       )}
     </div>
