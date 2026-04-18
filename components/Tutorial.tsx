@@ -66,10 +66,15 @@ export const Tutorial: React.FC<TutorialProps> = ({ isOpen, onClose, activeTab, 
     },
     {
       title: "Precio y Confirmación",
-      description: "Ingresa el precio y cuando estés listo, dale a 'CONFIRMAR VENTA' para guardarla. El tutorial seguirá cuando cierres esta ventana.",
+      description: "Ingresa el precio y cuando estés listo, dale a 'CONFIRMAR VENTA' para guardarla. Puedes elegir un color para resaltar la venta; las letras cambiarán solas para que siempre se lean bien.",
       elementId: "tutorial-confirm-sale",
       waitForAction: 'closeSalesForm',
       hideNext: true
+    },
+    {
+      title: "Editar y Corregir",
+      description: "Si te equivocas en algo, ¡no te preocupes! Ahora hay un botón con forma de lápiz al lado de cada venta para corregir cualquier dato o cambiar el color.",
+      targetTab: "ventas"
     },
     {
       title: "Cierre de Caja",

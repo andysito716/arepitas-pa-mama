@@ -19,6 +19,29 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onDeleteDay, 
   const [expandedSales, setExpandedSales] = React.useState<Record<string, boolean>>({});
   const [expandedExpenses, setExpandedExpenses] = React.useState<Record<string, boolean>>({});
 
+  const getContrastColor = (hexcolor: string | undefined): { text: string, muted: string, border: string } => {
+    if (!hexcolor) return { 
+      text: 'text-slate-700', 
+      muted: 'text-slate-400', 
+      border: 'border-slate-200'
+    };
+    
+    // Normalize hex
+    const hex = hexcolor.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+    
+    const isDark = yiq < 128;
+
+    return {
+      text: isDark ? 'text-white' : 'text-slate-900',
+      muted: isDark ? 'text-white/60' : 'text-slate-500',
+      border: isDark ? 'border-white/10' : 'border-black/5'
+    };
+  };
+
   const toggleSales = (id: string) => {
     setExpandedSales(prev => ({ ...prev, [id]: !prev[id] }));
   };
@@ -288,17 +311,24 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onDeleteDay, 
             <div className="space-y-2">
               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Ventas ({day.sales.length})</p>
               <div className="space-y-1.5">
-                {(expandedSales[day.id] ? day.sales : day.sales.slice(0, 4)).map((s) => (
-                  <div key={s.id} className="flex justify-between items-center text-[10px] bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
-                    <div className="truncate pr-1">
-                      <span className="font-black text-slate-700 block leading-tight">{s.buyerName}</span>
-                      <span className="text-slate-400 italic leading-tight">{s.productName}</span>
+                {(expandedSales[day.id] ? day.sales : day.sales.slice(0, 4)).map((s) => {
+                  const theme = getContrastColor(s.color);
+                  return (
+                    <div 
+                      key={s.id} 
+                      className={`flex justify-between items-center text-[10px] ${s.color ? '' : 'bg-white'} p-2 rounded-xl border ${theme.border} shadow-sm transition-all`}
+                      style={s.color ? { backgroundColor: s.color } : {}}
+                    >
+                      <div className="truncate pr-1">
+                        <span className={`font-black ${theme.text} block leading-tight`}>{s.buyerName}</span>
+                        <span className={`${theme.muted} italic leading-tight`}>{s.productName}</span>
+                      </div>
+                      <span className={`font-black ${theme.text} ml-1`}>
+                        ${(s.price * s.quantity).toLocaleString()}
+                      </span>
                     </div>
-                    <span className="font-black text-slate-900 ml-1">
-                      ${(s.price * s.quantity).toLocaleString()}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
                 {day.sales.length > 4 && (
                   <button 
                     onClick={() => toggleSales(day.id)}

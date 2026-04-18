@@ -8,6 +8,7 @@ export interface Sale {
   buyerName: string;
   buyerType: 'comprador' | 'distribuidor';
   date: string;
+  color?: string;
 }
 
 export interface Expense {

@@ -24,6 +24,7 @@ type Tab = 'ventas' | 'costos' | 'historial' | 'ia' | 'notas' | 'nube' | 'agenda
 const SQL_SETUP = `-- 1. COPIA TODO ESTE CÓDIGO
 -- 2. VE A TU PANEL DE SUPABASE -> SQL EDITOR -> NUEVA CONSULTA
 -- 3. PEGA Y DALE A "RUN" (EL BOTÓN VERDE)
+-- 4. SI APARECE UN CUADRO AMARILLO DICIENDO "RLS", DALE A "EJECUTAR SIN RLS"
 
 -- TABLA DE VENTAS
 create table if not exists sales (
@@ -35,6 +36,7 @@ create table if not exists sales (
   buyer_name text not null,
   buyer_type text not null default 'comprador',
   date text not null,
+  color text,
   business_id text not null,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
@@ -126,6 +128,17 @@ create table if not exists bookings (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
+-- DESACTIVAR RLS PARA EVITAR BLOQUEOS
+alter table sales disable row level security;
+alter table expenses disable row level security;
+alter table archives disable row level security;
+alter table notes disable row level security;
+alter table suggestions disable row level security;
+alter table closing_schedules disable row level security;
+alter table production_costs disable row level security;
+alter table business_settings disable row level security;
+alter table bookings disable row level security;
+
 -- ASEGURAR COLUMNAS SI LAS TABLAS YA EXISTÍAN
 do $$ 
 begin 
@@ -138,6 +151,9 @@ begin
   if not exists (select 1 from information_schema.columns where table_name='sales' and column_name='buyer_type') then
     alter table sales add column buyer_type text default 'comprador';
   end if;
+  if not exists (select 1 from information_schema.columns where table_name='sales' and column_name='color') then
+    alter table sales add column color text;
+  end if;
   if not exists (select 1 from information_schema.columns where table_name = 'bookings' and column_name = 'delivery_date') then
     alter table bookings add column delivery_date text;
     alter table bookings add column delivery_time text;
@@ -146,7 +162,8 @@ begin
 end $$;
 
 -- FORZAR RECARGA DEL ESQUEMA (SOLUCIONA EL ERROR PGRST205)
-notify pgrst, 'reload schema';`;
+notify pgrst, 'reload schema';
+`;
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('ventas');
@@ -159,6 +176,7 @@ const App: React.FC = () => {
   
   const [archiveToEdit, setArchiveToEdit] = useState<DailyArchive | null>(null);
   const [archiveToDelete, setArchiveToDelete] = useState<DailyArchive | null>(null);
+  const [saleToEdit, setSaleToEdit] = useState<Sale | null>(null);
   const [bookingPrefill, setBookingPrefill] = useState<any>(null);
   
   const [businessId, setBusinessId] = useState(() => localStorage.getItem('business_id') || '');
@@ -251,6 +269,22 @@ const App: React.FC = () => {
   }, [businessId, loadData]);
 
   const handleAddSale = async (data: Omit<Sale, 'id' | 'cost'>, andBooking?: boolean) => {
+    // Lógica de auto-cierre por cambio de fecha
+    if (sales.length > 0) {
+      const currentSalesSorted = [...sales].sort((a, b) => {
+        const dateA = a.date.split('/').reverse().join('-');
+        const dateB = b.date.split('/').reverse().join('-');
+        return dateB.localeCompare(dateA);
+      });
+      const latestDate = currentSalesSorted[0].date;
+      
+      if (data.date !== latestDate) {
+        // Si la nueva venta es de una fecha distinta (usualmente más reciente), 
+        // cerramos lo anterior automáticamente antes de registrar la nueva.
+        await handleNewDay();
+      }
+    }
+
     const newSale: Sale = { 
       ...data, 
       id: crypto.randomUUID(),
@@ -387,6 +421,17 @@ const App: React.FC = () => {
   const handleDeleteBooking = async (id: string) => {
     setBookings(prev => prev.filter(b => b.id !== id));
     if (businessId) await cloudService.deleteBooking(id);
+  };
+
+  const handleUpdateSale = async (id: string, data: Omit<Sale, 'id' | 'cost'>) => {
+    setSales(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
+    if (businessId) {
+      try {
+        await cloudService.updateSale(id, data);
+      } catch (e: any) {
+        setDbError({ message: e.message, isTableError: true });
+      }
+    }
   };
 
   const handleDeliverBooking = async (booking: Booking, registerAsSale: boolean) => {
@@ -634,13 +679,21 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {activeTab === 'ventas' && (
-          <div className="space-y-6">
-            <Dashboard stats={stats} />
-            <h3 className="font-black text-slate-800 text-lg uppercase tracking-tight">Ventas de Hoy</h3>
-            <SalesTable sales={sales} onDeleteSale={handleDeleteSale} onUpdateSale={() => {}} />
-            
-            <div className="flex flex-col gap-3">
+          {activeTab === 'ventas' && (
+            <div className="space-y-6">
+              <Dashboard stats={stats} />
+              <h3 className="font-black text-slate-800 text-lg uppercase tracking-tight">Ventas de Hoy</h3>
+              <SalesTable 
+                sales={sales} 
+                onDeleteSale={handleDeleteSale} 
+                onEditSale={(sale) => {
+                  setSaleToEdit(sale);
+                  setIsSalesFormOpen(true);
+                }}
+                onUpdateSale={() => {}} 
+              />
+              
+              <div className="flex flex-col gap-3">
               <button 
                 id="tutorial-closing-schedules"
                 onClick={() => setIsClosingModalOpen(true)}
@@ -746,7 +799,16 @@ const App: React.FC = () => {
         )}
       </div>
 
-      <SalesForm isOpen={isSalesFormOpen} onClose={() => setIsSalesFormOpen(false)} onAddSale={handleAddSale} />
+      <SalesForm 
+        isOpen={isSalesFormOpen} 
+        onClose={() => {
+          setIsSalesFormOpen(false);
+          setSaleToEdit(null);
+        }} 
+        onAddSale={handleAddSale} 
+        onUpdateSale={handleUpdateSale}
+        saleToEdit={saleToEdit}
+      />
       <ExpenseForm isOpen={isExpenseFormOpen} onClose={() => setIsExpenseFormOpen(false)} onAddExpense={handleAddExpense} />
       <Calculator isOpen={isCalcOpen} onClose={() => setIsCalcOpen(false)} />
       

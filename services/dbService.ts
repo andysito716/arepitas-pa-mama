@@ -214,7 +214,8 @@ export const cloudService = {
         quantity: item.quantity,
         buyerName: item.buyer_name,
         buyerType: item.buyer_type || 'comprador',
-        date: item.date
+        date: item.date,
+        color: item.color
       }));
     } catch (e: any) {
       throw e;
@@ -233,8 +234,25 @@ export const cloudService = {
         buyer_name: sale.buyerName,
         buyer_type: sale.buyerType,
         date: sale.date,
+        color: sale.color,
         business_id: businessId
       });
+    if (error) throw error;
+  },
+
+  async updateSale(saleId: string, data: Omit<Sale, 'id' | 'cost'>) {
+    const { error } = await supabase
+      .from('sales')
+      .update({
+        product_name: data.productName,
+        price: data.price,
+        quantity: data.quantity,
+        buyer_name: data.buyerName,
+        buyer_type: data.buyerType,
+        date: data.date,
+        color: data.color
+      })
+      .eq('id', saleId);
     if (error) throw error;
   },
 
@@ -352,6 +370,7 @@ export const cloudService = {
       buyer_name: s.buyerName,
       buyer_type: s.buyerType,
       date: s.date,
+      color: s.color,
       business_id: businessId
     }));
     
