@@ -17,7 +17,10 @@ import { Tutorial } from './components/Tutorial';
 import { NotesSection } from './components/NotesSection';
 import { SuggestionsSection } from './components/SuggestionsSection';
 import { ClosingScheduleModal } from './components/ClosingScheduleModal';
+import { SalesImportModal } from './components/SalesImportModal';
 import { cloudService } from './services/dbService';
+import { extractSalesFromText } from './services/geminiService';
+import * as XLSX from 'xlsx';
 
 type Tab = 'ventas' | 'costos' | 'historial' | 'ia' | 'notas' | 'nube' | 'agendacion';
 
@@ -154,6 +157,9 @@ begin
   if not exists (select 1 from information_schema.columns where table_name='sales' and column_name='color') then
     alter table sales add column color text;
   end if;
+  if not exists (select 1 from information_schema.columns where table_name='business_settings' and column_name='advanced_ai_enabled') then
+    alter table business_settings add column advanced_ai_enabled boolean default false;
+  end if;
   if not exists (select 1 from information_schema.columns where table_name = 'bookings' and column_name = 'delivery_date') then
     alter table bookings add column delivery_date text;
     alter table bookings add column delivery_time text;
@@ -189,6 +195,8 @@ const App: React.FC = () => {
   const [closingSchedules, setClosingSchedules] = useState<ClosingSchedule[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isClosingModalOpen, setIsClosingModalOpen] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [pendingImportSales, setPendingImportSales] = useState<Omit<Sale, 'id' | 'cost'>[]>([]);
   const [lastAutoCloseCheck, setLastAutoCloseCheck] = useState<string | null>(null);
   
   const [productionCosts, setProductionCosts] = useState<ProductionCost[]>(() => {
@@ -196,6 +204,7 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : [{ id: 'default', value: 0, label: 'Costo Base' }];
   });
   const [selectedCostId, setSelectedCostId] = useState(() => localStorage.getItem('selected_cost_id') || 'default');
+  const [advancedAIEnabled, setAdvancedAIEnabled] = useState(() => localStorage.getItem('advanced_ai_enabled') === 'true');
 
   useEffect(() => {
     localStorage.setItem('production_costs', JSON.stringify(productionCosts));
@@ -204,6 +213,10 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('selected_cost_id', selectedCostId);
   }, [selectedCostId]);
+
+  useEffect(() => {
+    localStorage.setItem('advanced_ai_enabled', String(advancedAIEnabled));
+  }, [advancedAIEnabled]);
 
   const activeProductionCost = useMemo(() => 
     productionCosts.find(c => c.id === selectedCostId)?.value || 0
@@ -240,6 +253,9 @@ const App: React.FC = () => {
       }
       if (remoteSettings?.selected_production_cost_id) {
         setSelectedCostId(remoteSettings.selected_production_cost_id);
+      }
+      if (remoteSettings?.advanced_ai_enabled !== undefined) {
+        setAdvancedAIEnabled(remoteSettings.advanced_ai_enabled);
       }
     } catch (e: any) {
       console.error("Error en carga:", e);
@@ -423,6 +439,48 @@ const App: React.FC = () => {
     if (businessId) await cloudService.deleteBooking(id);
   };
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const data = e.target?.result;
+        const workbook = XLSX.read(data, { type: 'binary' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+        
+        // Convert array of arrays to string for Gemini
+        const textToAnalyze = json.map((row: any) => row.join(' | ')).join('\n');
+        
+        const extracted = await extractSalesFromText(textToAnalyze);
+        setPendingImportSales(extracted);
+      };
+      reader.readAsBinaryString(file);
+    } catch (error) {
+      console.error("Error leyendo archivo:", error);
+      alert("No se pudo leer el archivo. Intenta con otro.");
+      setIsImporting(false);
+    }
+  };
+
+  const handleConfirmImportDay = async (daySales: Omit<Sale, 'id' | 'cost'>[]) => {
+    setIsSyncing(true);
+    try {
+      // Sort sales by date just in case, though the modal already groups them
+      for (const saleData of daySales) {
+        await handleAddSale(saleData);
+      }
+    } catch (e) {
+      alert("Hubo un error al registrar algunas ventas.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleUpdateSale = async (id: string, data: Omit<Sale, 'id' | 'cost'>) => {
     setSales(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
     if (businessId) {
@@ -501,6 +559,17 @@ const App: React.FC = () => {
         }
       } catch (e: any) {
         console.error("Error al eliminar costo:", e);
+      }
+    }
+  };
+
+  const handleToggleAdvancedAI = async (enabled: boolean) => {
+    setAdvancedAIEnabled(enabled);
+    if (businessId) {
+      try {
+        await cloudService.updateBusinessSettings(businessId, { advanced_ai_enabled: enabled });
+      } catch (e: any) {
+        console.error("Error al guardar IA:", e);
       }
     }
   };
@@ -694,6 +763,14 @@ const App: React.FC = () => {
               />
               
               <div className="flex flex-col gap-3">
+              <label className="w-full py-4 bg-emerald-50 text-emerald-600 font-black rounded-2xl border-2 border-emerald-100 flex items-center justify-center gap-2 active:scale-95 transition-all uppercase text-xs tracking-widest cursor-pointer">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                {isImporting ? 'Analizando Excel...' : 'Subir Ventas (Excel)'}
+                <input type="file" accept=".xlsx, .xls, .csv" className="hidden" onChange={handleFileUpload} disabled={isImporting} />
+              </label>
+
               <button 
                 id="tutorial-closing-schedules"
                 onClick={() => setIsClosingModalOpen(true)}
@@ -758,7 +835,7 @@ const App: React.FC = () => {
           />
         )}
 
-        {activeTab === 'ia' && <AIInsights sales={sales} />}
+        {activeTab === 'ia' && <AIInsights sales={sales} advancedAIEnabled={advancedAIEnabled} onToggleAdvancedAI={handleToggleAdvancedAI} />}
         {activeTab === 'agendacion' && (
           <BookingsView 
             bookings={bookings} 
@@ -818,6 +895,14 @@ const App: React.FC = () => {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         isSalesFormOpen={isSalesFormOpen}
+      />
+
+      <SalesImportModal 
+        isOpen={pendingImportSales.length > 0} 
+        onClose={() => { setPendingImportSales([]); setIsImporting(false); }}
+        pendingSales={pendingImportSales}
+        onConfirmDay={handleConfirmImportDay}
+        loading={isSyncing}
       />
 
       <ClosingScheduleModal 

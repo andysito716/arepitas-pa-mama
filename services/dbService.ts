@@ -84,23 +84,23 @@ export const cloudService = {
     if (error) throw error;
   },
 
-  async fetchBusinessSettings(businessId: string): Promise<{ selected_production_cost_id: string } | null> {
+  async fetchBusinessSettings(businessId: string): Promise<{ selected_production_cost_id: string, advanced_ai_enabled: boolean } | null> {
     if (!businessId) return null;
     const { data, error } = await supabase
       .from('business_settings')
-      .select('selected_production_cost_id')
+      .select('selected_production_cost_id, advanced_ai_enabled')
       .eq('business_id', businessId)
       .single();
     if (error && error.code !== 'PGRST116') throw error;
     return data;
   },
 
-  async updateBusinessSettings(businessId: string, settings: { selected_production_cost_id: string }) {
+  async updateBusinessSettings(businessId: string, settings: { selected_production_cost_id?: string, advanced_ai_enabled?: boolean }) {
     const { error } = await supabase
       .from('business_settings')
       .upsert({
         business_id: businessId,
-        selected_production_cost_id: settings.selected_production_cost_id,
+        ...settings,
         updated_at: new Date().toISOString()
       });
     if (error) throw error;

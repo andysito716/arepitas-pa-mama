@@ -91,6 +91,11 @@ export const Tutorial: React.FC<TutorialProps> = ({ isOpen, onClose, activeTab, 
       targetTab: "ventas"
     },
     {
+      title: "Importar desde Excel",
+      description: "¿Tienes muchas ventas en un archivo? Usa este botón. Nuestra IA organizará todo por fechas en ventanas separadas donde podrás editar cualquier dato antes de guardar.",
+      targetTab: "ventas"
+    },
+    {
       title: "Cierre de Caja",
       description: "¡Muy importante! Al final del día, presiona este botón. Esto guarda todas tus ventas y gastos en el historial y deja la pantalla limpia para mañana.",
       targetTab: "ventas",
@@ -154,7 +159,7 @@ export const Tutorial: React.FC<TutorialProps> = ({ isOpen, onClose, activeTab, 
     },
     {
       title: "Inteligencia Artificial",
-      description: "Nuestra IA analiza tus ventas y te da consejos personalizados para ganar más dinero.",
+      description: "Nuestra IA analiza tus ventas y te da consejos. Ahora puedes activar la 'IA AVANZADA' para recibir análisis de precios y predicciones de producción.",
       targetTab: "ia",
       elementId: "nav-ia"
     },
