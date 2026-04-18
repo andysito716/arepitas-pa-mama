@@ -65,9 +65,23 @@ export const Tutorial: React.FC<TutorialProps> = ({ isOpen, onClose, activeTab, 
       elementId: "tutorial-client-type-select"
     },
     {
-      title: "Precio y Confirmación",
-      description: "Ingresa el precio y cuando estés listo, dale a 'CONFIRMAR VENTA' para guardarla. Puedes elegir un color para resaltar la venta; las letras cambiarán solas para que siempre se lean bien.",
-      elementId: "tutorial-confirm-sale",
+      title: "Color Personalizado (Opcional)",
+      description: "¡Dale estilo a tus ventas! Puedes elegir un color predefinido o usar el selector arcoíris para poner el color que quieras. Es opcional y ayuda a organizar visualmente tus pedidos.",
+      elementId: "tutorial-color-picker"
+    },
+    {
+      title: "Confirmar Venta",
+      description: "Ingresa el precio y cuando estés listo, dale a 'CONFIRMAR VENTA'. Esto abrirá una pantalla de revisión final.",
+      elementId: "tutorial-confirm-sale"
+    },
+    {
+      title: "Pantalla de Revisión",
+      description: "¡Aquí está! Esta ventana te muestra toda la información de la venta. Revisa que el producto, cliente y total sean correctos. El fondo cambiará según el color que elegiste.",
+      elementId: "tutorial-confirm-modal"
+    },
+    {
+      title: "Guardar definitivamente",
+      description: "Si todo está bien, dale a 'SÍ, REGISTRAR AHORA'. Si necesitas cambiar algo, usa 'VOLVER A REVISAR'.",
       waitForAction: 'closeSalesForm',
       hideNext: true
     },
@@ -81,6 +95,11 @@ export const Tutorial: React.FC<TutorialProps> = ({ isOpen, onClose, activeTab, 
       description: "¡Muy importante! Al final del día, presiona este botón. Esto guarda todas tus ventas y gastos en el historial y deja la pantalla limpia para mañana.",
       targetTab: "ventas",
       elementId: "tutorial-close-day"
+    },
+    {
+      title: "Fechas y Cierre Automático",
+      description: "Al registrar una venta, si la fecha es de un día diferente a la anterior, la app cerrará la caja del día pasado automáticamente por seguridad.",
+      targetTab: "ventas"
     },
     {
       title: "Horarios de Cierre",
@@ -188,17 +207,22 @@ export const Tutorial: React.FC<TutorialProps> = ({ isOpen, onClose, activeTab, 
 
   useEffect(() => {
     if (isOpen) {
-      const timer = setTimeout(() => {
+      // Immediate update and then periodically to handle animations/shifts
+      updateSpotlight(currentStep);
+      
+      const interval = setInterval(() => {
         updateSpotlight(currentStep);
-      }, 300);
+      }, 50); // 20fps check is enough to feel pinned
 
-      // Fix: Update spotlight on scroll so it follows the element
+      // Also listen to all scrolls in the app
       const handleScroll = () => updateSpotlight(currentStep);
       window.addEventListener('scroll', handleScroll, true);
+      window.addEventListener('resize', handleScroll);
       
       return () => {
-        clearTimeout(timer);
+        clearInterval(interval);
         window.removeEventListener('scroll', handleScroll, true);
+        window.removeEventListener('resize', handleScroll);
       };
     }
   }, [currentStep, activeTab, isSalesFormOpen, isOpen]);
@@ -208,7 +232,17 @@ export const Tutorial: React.FC<TutorialProps> = ({ isOpen, onClose, activeTab, 
     if (step.elementId) {
       const el = document.getElementById(step.elementId);
       if (el) {
-        setSpotlightRect(el.getBoundingClientRect());
+        const rect = el.getBoundingClientRect();
+        // Check if the element is hidden by overflow-y-auto (like in the new SalesForm)
+        const parentScroll = el.closest('.overflow-y-auto');
+        if (parentScroll) {
+          const parentRect = parentScroll.getBoundingClientRect();
+          if (rect.top < parentRect.top || rect.bottom > parentRect.bottom) {
+            setSpotlightRect(null); // Hide arrow if element is scrolled out of view
+            return;
+          }
+        }
+        setSpotlightRect(rect);
         return;
       }
     }
@@ -247,15 +281,22 @@ export const Tutorial: React.FC<TutorialProps> = ({ isOpen, onClose, activeTab, 
       {spotlightRect && (
         <motion.div
           initial={{ opacity: 0, scale: 0 }}
+          transition={{ 
+            type: "spring", 
+            stiffness: 300, 
+            damping: 30,
+            mass: 0.8
+          }}
           animate={{ 
             opacity: 1, 
             scale: 1,
-            top: spotlightRect.top - 60,
-            left: spotlightRect.left + (spotlightRect.width / 2) - 20
+            top: spotlightRect.top - (spotlightRect.top < 120 ? -spotlightRect.height - 10 : 45),
+            left: spotlightRect.left + (spotlightRect.width / 2) - 16,
+            rotate: spotlightRect.top < 120 ? 180 : 0
           }}
-          className="absolute z-30 text-blue-600 drop-shadow-[0_4px_8px_rgba(37,99,235,0.4)]"
+          className="absolute z-30 text-blue-600 drop-shadow-[0_4px_10px_rgba(37,99,235,0.5)]"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 sm:h-10 sm:w-10 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
           </svg>
         </motion.div>

@@ -195,7 +195,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ onAddSale, onUpdateSale, i
                 </select>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1" id="tutorial-color-picker">
                 <label className="text-[9px] font-black uppercase text-slate-400 ml-2">Color (Opcional)</label>
                 <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-2xl h-[52px]">
                   <div className="flex-1 flex gap-1 overflow-x-auto no-scrollbar px-1">
@@ -246,6 +246,7 @@ export const SalesForm: React.FC<SalesFormProps> = ({ onAddSale, onUpdateSale, i
         {showConfirm && (
           <div className="fixed inset-0 z-[110] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-6 sm:p-4">
             <div 
+              id="tutorial-confirm-modal"
               className="w-full max-w-sm rounded-[32px] p-8 shadow-2xl animate-in zoom-in duration-200"
               style={{ backgroundColor: color || '#ffffff' }}
             >
