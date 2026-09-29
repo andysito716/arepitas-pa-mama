@@ -9,6 +9,8 @@ interface AIInsightsProps {
   history: DailyArchive[];
   advancedAIEnabled: boolean;
   onToggleAdvancedAI: (enabled: boolean) => void;
+  chatMessages: Message[];
+  onSetChatMessages: (messages: Message[] | ((prev: Message[]) => Message[])) => void;
 }
 
 interface Message {
@@ -17,24 +19,23 @@ interface Message {
   content: string;
 }
 
-export const AIInsights: React.FC<AIInsightsProps> = ({ sales, history, advancedAIEnabled, onToggleAdvancedAI }) => {
+export const AIInsights: React.FC<AIInsightsProps> = ({ 
+  sales, 
+  history, 
+  advancedAIEnabled, 
+  onToggleAdvancedAI,
+  chatMessages,
+  onSetChatMessages
+}) => {
   const [insight, setInsight] = useState<string | null>(() => {
     return localStorage.getItem('ai_last_insight');
   });
   const [loading, setLoading] = useState(false);
   
-  // Chat State
-  const [messages, setMessages] = useState<Message[]>(() => {
-    const saved = localStorage.getItem('ai_chat_messages');
-    return saved ? JSON.parse(saved) : [];
-  });
+  // Chat State (now controlled by App via props)
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    localStorage.setItem('ai_chat_messages', JSON.stringify(messages));
-  }, [messages]);
 
   useEffect(() => {
     if (insight) {
@@ -48,7 +49,7 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ sales, history, advanced
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isTyping]);
+  }, [chatMessages, isTyping]);
 
   const handleGenerate = async () => {
     if (sales.length === 0) return;
@@ -64,14 +65,14 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ sales, history, advanced
 
     const userMsg = inputMessage.trim();
     setInputMessage('');
-    setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'user', content: userMsg }]);
+    onSetChatMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'user', content: userMsg }]);
     setIsTyping(true);
 
     try {
       const aiResponse = await askBusinessChat(userMsg, { sales, history });
-      setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'ai', content: aiResponse }]);
+      onSetChatMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'ai', content: aiResponse }]);
     } catch (error) {
-      setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'ai', content: "Lo siento, tuve un problema al procesar tu duda. ¿Podrías repetirme la pregunta?" }]);
+      onSetChatMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'ai', content: "Lo siento, tuve un problema al procesar tu duda. ¿Podrías repetirme la pregunta?" }]);
     } finally {
       setIsTyping(false);
     }
@@ -181,7 +182,7 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ sales, history, advanced
           <button 
             onClick={() => {
               if(confirm("¿Quieres borrar toda la conversación?")) {
-                setMessages([]);
+                onSetChatMessages([]);
                 localStorage.removeItem('ai_chat_messages');
               }
             }}
@@ -196,7 +197,7 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ sales, history, advanced
 
         <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar bg-slate-50">
           <AnimatePresence initial={false}>
-            {messages.length === 0 && !isTyping && (
+            {chatMessages.length === 0 && !isTyping && (
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -223,7 +224,7 @@ export const AIInsights: React.FC<AIInsightsProps> = ({ sales, history, advanced
                 </div>
               </motion.div>
             )}
-            {messages.map((msg) => (
+            {chatMessages.map((msg) => (
               <motion.div 
                 key={msg.id}
                 initial={{ opacity: 0, y: 10, scale: 0.95 }}

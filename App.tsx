@@ -18,6 +18,7 @@ import { NotesSection } from './components/NotesSection';
 import { SuggestionsSection } from './components/SuggestionsSection';
 import { ClosingScheduleModal } from './components/ClosingScheduleModal';
 import { SalesImportModal } from './components/SalesImportModal';
+import { WeeklyApp } from './components/weekly/WeeklyApp';
 import { cloudService } from './services/dbService';
 import { extractSalesFromText } from './services/geminiService';
 import * as XLSX from 'xlsx';
@@ -172,6 +173,18 @@ notify pgrst, 'reload schema';
 `;
 
 const App: React.FC = () => {
+  const [viewMode, setViewMode] = useState<'antes' | 'despues'>(() => {
+    return (localStorage.getItem('app_view_mode') as 'antes' | 'despues') || 'antes';
+  });
+
+  const toggleViewMode = () => {
+    setViewMode((prev) => {
+      const next = prev === 'antes' ? 'despues' : 'antes';
+      localStorage.setItem('app_view_mode', next);
+      return next;
+    });
+  };
+
   const [activeTab, setActiveTab] = useState<Tab>('ventas');
   const [isSalesFormOpen, setIsSalesFormOpen] = useState(false);
   const [isExpenseFormOpen, setIsExpenseFormOpen] = useState(false);
@@ -199,6 +212,16 @@ const App: React.FC = () => {
   const [pendingImportSales, setPendingImportSales] = useState<Omit<Sale, 'id' | 'cost'>[]>([]);
   const [lastAutoCloseCheck, setLastAutoCloseCheck] = useState<string | null>(null);
   
+  // AI Chat Persistence State
+  const [aiChatMessages, setAiChatMessages] = useState<{id: string, role: 'user'|'ai', content: string}[]>(() => {
+    const saved = localStorage.getItem('ai_chat_messages');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('ai_chat_messages', JSON.stringify(aiChatMessages));
+  }, [aiChatMessages]);
+
   const [productionCosts, setProductionCosts] = useState<ProductionCost[]>(() => {
     const saved = localStorage.getItem('production_costs');
     return saved ? JSON.parse(saved) : [{ id: 'default', value: 0, label: 'Costo Base' }];
@@ -483,7 +506,7 @@ const App: React.FC = () => {
       const totalProfit = totalRevenue - totalCogs;
 
       const archive: DailyArchive = {
-        id: `archive-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: `archive-${crypto.randomUUID()}`,
         date: dayDate, // Usar la fecha real detectada/editada
         sales: salesToArchive,
         expenses: [],
@@ -623,10 +646,10 @@ const App: React.FC = () => {
       : new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 
     const archive: DailyArchive = {
-      id: `archive-${Date.now()}`,
+      id: `archive-${crypto.randomUUID()}`,
       date: latestSaleDate,
-      sales: [...sales],
-      expenses: [...expenses],
+      sales: sales.map(s => ({ ...s, id: crypto.randomUUID() })),
+      expenses: expenses.map(e => ({ ...e, id: crypto.randomUUID() })),
       totalRevenue,
       totalProfit,
       totalItems: sales.reduce((acc, s) => acc + s.quantity, 0)
@@ -715,9 +738,27 @@ const App: React.FC = () => {
     };
   }, [sales, expenses]);
 
+  if (viewMode === 'despues') {
+    return <WeeklyApp onToggleToOldApp={toggleViewMode} />;
+  }
+
   return (
     <div className="flex flex-col h-screen max-h-screen bg-slate-50 overflow-hidden font-sans">
       <Header />
+
+      {/* Botón en la esquina superior derecha que dice "despues" */}
+      <div className="fixed top-2.5 right-3 z-[100]">
+        <button
+          onClick={toggleViewMode}
+          className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-full font-bold text-xs uppercase tracking-wider shadow-md hover:shadow-lg transition-all duration-200 border border-blue-500 flex items-center gap-2 hover:scale-105 active:scale-95 cursor-pointer"
+          title="Ir al nuevo proyecto"
+        >
+          <span>despues</span>
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </button>
+      </div>
       
       <main className="flex-1 overflow-y-auto pb-32 px-4 pt-4 safe-top custom-scrollbar">
         <div className="max-w-2xl mx-auto w-full">
@@ -870,6 +911,8 @@ const App: React.FC = () => {
             history={history}
             advancedAIEnabled={advancedAIEnabled} 
             onToggleAdvancedAI={handleToggleAdvancedAI} 
+            chatMessages={aiChatMessages}
+            onSetChatMessages={setAiChatMessages}
           />
         )}
         {activeTab === 'agendacion' && (
