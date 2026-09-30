@@ -744,71 +744,57 @@ const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen max-h-screen bg-slate-50 overflow-hidden font-sans">
-      <Header />
-
-      {/* Botón en la esquina superior derecha que dice "despues" */}
-      <div className="fixed top-2.5 right-3 z-[100]">
-        <button
-          onClick={toggleViewMode}
-          className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-full font-bold text-xs uppercase tracking-wider shadow-md hover:shadow-lg transition-all duration-200 border border-blue-500 flex items-center gap-2 hover:scale-105 active:scale-95 cursor-pointer"
-          title="Ir al nuevo proyecto"
-        >
-          <span>despues</span>
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-          </svg>
-        </button>
-      </div>
+      <Header onToggleDespues={toggleViewMode} />
       
-      <main className="flex-1 overflow-y-auto pb-32 px-4 pt-4 safe-top custom-scrollbar">
+      <main className="flex-1 overflow-y-auto pb-16 px-2.5 sm:px-4 pt-1.5 safe-top custom-scrollbar">
         <div className="max-w-2xl mx-auto w-full">
           {activeTab === 'ventas' && (
             <button 
               onClick={() => setIsTutorialOpen(true)}
-              className="w-full mb-4 py-4 bg-white border-2 border-blue-100 rounded-[28px] flex items-center justify-center gap-3 text-blue-600 font-black text-xs uppercase tracking-widest shadow-sm hover:bg-blue-50 transition-all active:scale-95 group"
+              className="w-full mb-2 py-1.5 px-3 bg-white border border-blue-100 rounded-xl flex items-center justify-center gap-2 text-blue-600 font-bold text-[11px] uppercase tracking-wider shadow-2xs hover:bg-blue-50 transition-all active:scale-95 group cursor-pointer"
             >
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              ¿Cómo usar la App? Ver Tutorial
+              <span>¿Cómo usar la App? Ver Tutorial</span>
             </button>
           )}
 
           {dbError && (
-          <div className="mb-6 bg-red-50 border-2 border-red-200 p-6 rounded-[32px] space-y-4 animate-in fade-in zoom-in duration-300">
-            <div className="flex items-center gap-3 text-red-700">
-               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="mb-3 bg-red-50 border border-red-200 p-3 sm:p-4 rounded-2xl space-y-2.5 animate-in fade-in zoom-in duration-300">
+            <div className="flex items-center gap-2 text-red-700">
+               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                </svg>
-               <h3 className="font-black text-sm uppercase">¡Problema de Configuración!</h3>
+               <h3 className="font-black text-xs uppercase">¡Problema de Configuración!</h3>
             </div>
             
-            <p className="text-xs text-red-600 font-bold leading-relaxed">
+            <p className="text-[11px] text-red-600 font-bold leading-tight">
               {dbError.isTableError 
                 ? "Faltan tablas o columnas en Supabase (Error PGRST). Necesitas ejecutar el script de reparación abajo." 
                 : dbError.message}
             </p>
 
             {dbError.isTableError && (
-              <div className="space-y-3">
-                <div className="bg-slate-900 p-4 rounded-2xl relative border border-white/10 shadow-inner">
-                  <pre className="text-[9px] text-emerald-400 font-mono overflow-x-auto whitespace-pre leading-tight max-h-40">
+              <div className="space-y-2">
+                <div className="bg-slate-900 p-2.5 rounded-xl relative border border-white/10 shadow-inner">
+                  <pre className="text-[9px] text-emerald-400 font-mono overflow-x-auto whitespace-pre leading-tight max-h-32">
                     {SQL_SETUP}
                   </pre>
                   <button 
                     onClick={() => { navigator.clipboard.writeText(SQL_SETUP); alert("¡SQL Copiado! Ve a Supabase -> SQL Editor y pégalo."); }}
-                    className="absolute top-2 right-2 bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-[9px] font-black uppercase shadow-lg active:scale-90 transition-all"
+                    className="absolute top-2 right-2 bg-emerald-500 text-white px-2.5 py-1 rounded-lg text-[9px] font-black uppercase shadow-lg active:scale-90 transition-all cursor-pointer"
                   >
                     COPIAR SCRIPT
                   </button>
                 </div>
-                <div className="flex flex-col gap-2">
-                  <p className="text-[10px] text-slate-500 font-bold italic text-center">Una vez ejecutado en Supabase, dale al botón de abajo:</p>
+                <div className="flex flex-col gap-1.5">
+                  <p className="text-[9px] text-slate-500 font-bold italic text-center">Una vez ejecutado en Supabase, dale al botón de abajo:</p>
                   <button 
                     onClick={loadData}
-                    className="w-full py-4 bg-red-600 text-white font-black rounded-2xl text-xs uppercase shadow-xl shadow-red-100 active:scale-95 transition-all"
+                    className="w-full py-2.5 bg-red-600 text-white font-black rounded-xl text-xs uppercase shadow-xs active:scale-95 transition-all cursor-pointer"
                   >
                     REINTENTAR CONEXIÓN
                   </button>
@@ -819,9 +805,12 @@ const App: React.FC = () => {
         )}
 
           {activeTab === 'ventas' && (
-            <div className="space-y-6">
+            <div className="space-y-2.5">
               <Dashboard stats={stats} />
-              <h3 className="font-black text-slate-800 text-lg uppercase tracking-tight">Ventas de Hoy</h3>
+              <div className="flex items-center justify-between pt-0.5">
+                <h3 className="font-black text-slate-800 text-xs sm:text-sm uppercase tracking-tight">Ventas de Hoy</h3>
+                <span className="text-[10px] text-slate-400 font-bold">{sales.length} registradas</span>
+              </div>
               <SalesTable 
                 sales={sales} 
                 onDeleteSale={handleDeleteSale} 
@@ -832,42 +821,47 @@ const App: React.FC = () => {
                 onUpdateSale={() => {}} 
               />
               
-              <div className="flex flex-col gap-3">
-              <label className="w-full py-4 bg-emerald-50 text-emerald-600 font-black rounded-2xl border-2 border-emerald-100 flex items-center justify-center gap-2 active:scale-95 transition-all uppercase text-xs tracking-widest cursor-pointer">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                {isImporting ? 'Analizando Excel...' : 'Subir Ventas (Excel)'}
-                <input type="file" accept=".xlsx, .xls, .csv" className="hidden" onChange={handleFileUpload} disabled={isImporting} />
-              </label>
+              <div className="flex flex-col gap-2 pt-1">
+              <div className="grid grid-cols-2 gap-2">
+                <label className="h-10 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-black rounded-xl border border-emerald-200 flex items-center justify-center gap-1.5 active:scale-95 transition-all uppercase text-[11px] tracking-wider cursor-pointer">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <span className="truncate">{isImporting ? 'Analizando...' : 'Subir Excel'}</span>
+                  <input type="file" accept=".xlsx, .xls, .csv" className="hidden" onChange={handleFileUpload} disabled={isImporting} />
+                </label>
 
-              <button 
-                id="tutorial-closing-schedules"
-                onClick={() => setIsClosingModalOpen(true)}
-                className="w-full py-4 bg-blue-50 text-blue-600 font-black rounded-2xl border-2 border-blue-100 flex items-center justify-center gap-2 active:scale-95 transition-all uppercase text-xs tracking-widest"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Configurar Horarios de Cierre
-              </button>
+                <button 
+                  id="tutorial-closing-schedules"
+                  onClick={() => setIsClosingModalOpen(true)}
+                  className="h-10 bg-blue-50 hover:bg-blue-100 text-blue-700 font-black rounded-xl border border-blue-200 flex items-center justify-center gap-1.5 active:scale-95 transition-all uppercase text-[11px] tracking-wider cursor-pointer"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="truncate">Horarios Cierre</span>
+                </button>
+              </div>
 
-              <button id="tutorial-close-day" onClick={handleNewDay} className="w-full py-5 bg-slate-800 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all disabled:opacity-50" disabled={isSyncing}>
-                {isSyncing ? 'SINCRONIZANDO...' : 'CERRAR CAJA DE HOY'}
+              <button id="tutorial-close-day" onClick={handleNewDay} className="h-11 w-full bg-slate-800 hover:bg-slate-900 text-white font-black rounded-xl shadow-xs active:scale-95 transition-all disabled:opacity-50 text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer" disabled={isSyncing}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                </svg>
+                <span>{isSyncing ? 'SINCRONIZANDO...' : 'CERRAR CAJA DE HOY'}</span>
               </button>
             </div>
           </div>
         )}
 
         {activeTab === 'notas' && (
-          <div className="space-y-12">
+          <div className="space-y-4">
             <NotesSection 
               notes={notes} 
               onAddNote={handleAddNote} 
               onDeleteNote={handleDeleteNote} 
             />
             
-            <div className="h-px bg-slate-200 mx-4" />
+            <div className="h-px bg-slate-200" />
 
             <SuggestionsSection 
               suggestions={suggestions}
@@ -878,8 +872,8 @@ const App: React.FC = () => {
         )}
 
         {activeTab === 'costos' && (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-black text-slate-800 mb-6 uppercase tracking-tight">Costo de Producción</h2>
+          <div className="space-y-3">
+            <h2 className="text-base sm:text-lg font-black text-slate-800 uppercase tracking-tight">Costo de Producción</h2>
             <CostsView 
               stats={stats} 
               sales={sales} 
@@ -929,15 +923,17 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {/* Floating Action Buttons */}
-      <div className="fixed bottom-24 right-6 flex flex-col gap-3 z-40">
+      {/* Floating Action Buttons - Mobile Ergonomic */}
+      <div className="fixed bottom-16 right-3 sm:right-4 flex flex-col gap-2 z-40">
         {activeTab === 'costos' && (
           <button 
             id="tutorial-add-expense"
             onClick={() => setIsExpenseFormOpen(true)}
-            className="w-16 h-16 bg-amber-500 text-white rounded-full shadow-2xl border-4 border-white flex items-center justify-center active:scale-90 transition-all"
+            className="w-12 h-12 bg-amber-500 hover:bg-amber-600 text-white rounded-full shadow-lg border-2 border-white flex items-center justify-center active:scale-90 transition-all cursor-pointer"
+            title="Añadir Gasto"
+            aria-label="Añadir Gasto"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
             </svg>
           </button>
@@ -946,9 +942,11 @@ const App: React.FC = () => {
           <button 
             id="tutorial-add-sale"
             onClick={() => setIsSalesFormOpen(true)}
-            className="w-16 h-16 bg-blue-600 text-white rounded-full shadow-2xl border-4 border-white flex items-center justify-center active:scale-90 transition-all"
+            className="w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg border-2 border-white flex items-center justify-center active:scale-90 transition-all cursor-pointer"
+            title="Añadir Venta"
+            aria-label="Añadir Venta"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
             </svg>
           </button>
@@ -1009,7 +1007,7 @@ const App: React.FC = () => {
         confirmText="Sí, borrar"
       />
 
-      <nav id="tutorial-nav-bar" className="bg-white/90 backdrop-blur-xl border-t border-slate-200 fixed bottom-0 left-0 right-0 z-50 h-20 flex justify-around items-center px-2 pb-2">
+      <nav id="tutorial-nav-bar" className="bg-white/95 backdrop-blur-xl border-t border-slate-200 fixed bottom-0 left-0 right-0 z-50 h-13 sm:h-14 flex justify-around items-center px-1">
         <NavBtn id="nav-ventas" active={activeTab === 'ventas'} onClick={() => setActiveTab('ventas')} icon="cash" label="Ventas" />
         <NavBtn id="nav-costos" active={activeTab === 'costos'} onClick={() => setActiveTab('costos')} icon="beaker" label="Costos" />
         <NavBtn id="nav-notas" active={activeTab === 'notas'} onClick={() => setActiveTab('notas')} icon="note" label="Notas" />
@@ -1024,18 +1022,18 @@ const App: React.FC = () => {
 
 const NavBtn = ({ active, onClick, icon, label, id }: { active: boolean, onClick: () => void, icon: string, label: string, id?: string }) => {
   const icons: Record<string, React.ReactNode> = {
-    cash: <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
-    beaker: <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.631.285a2 2 0 01-1.558 0l-.63-.285a6 6 0 00-3.86-.517l-2.388.477a2 2 0 00-1.022.547V21h17.428v-5.572zM7 3l3 4h4l3-4" /></svg>,
-    history: <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
-    sparkles: <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>,
-    note: <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>,
-    calendar: <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v14a2 2 0 002 2z" /></svg>,
-    cloud: <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+    cash: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.3} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+    beaker: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.3} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.631.285a2 2 0 01-1.558 0l-.63-.285a6 6 0 00-3.86-.517l-2.388.477a2 2 0 00-1.022.547V21h17.428v-5.572zM7 3l3 4h4l3-4" /></svg>,
+    history: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.3} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+    sparkles: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.3} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>,
+    note: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.3} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>,
+    calendar: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.3} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v14a2 2 0 002 2z" /></svg>,
+    cloud: <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.3} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
   };
   return (
-    <button id={id} onClick={onClick} className={`flex flex-col items-center justify-center flex-1 transition-all ${active ? 'text-blue-600 scale-110' : 'text-slate-400'}`}>
+    <button id={id} onClick={onClick} className={`min-h-[44px] flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer ${active ? 'text-blue-600 font-black' : 'text-slate-400 hover:text-slate-600'}`}>
       {icons[icon]}
-      <span className={`text-[9px] font-black uppercase tracking-wider ${active ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}>{label}</span>
+      <span className={`text-[8.5px] uppercase tracking-tight leading-tight mt-0.5 ${active ? 'opacity-100 font-black' : 'opacity-80 font-medium'}`}>{label}</span>
     </button>
   );
 };

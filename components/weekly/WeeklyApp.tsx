@@ -119,7 +119,7 @@ export const WeeklyApp: React.FC<WeeklyAppProps> = ({ onToggleToOldApp }) => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pb-20 selection:bg-blue-100">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-800 pb-12 selection:bg-blue-100">
       {/* Top Header */}
       <WeeklyHeader
         currentWeek={currentWeek}
@@ -129,44 +129,44 @@ export const WeeklyApp: React.FC<WeeklyAppProps> = ({ onToggleToOldApp }) => {
         onToggleOrganizing={() => setIsOrganizing(!isOrganizing)}
       />
 
-      {/* Main Content Area */}
-      <main className="max-w-5xl mx-auto px-4 py-5 space-y-4">
+      {/* Main Content Area - Mobile First Dense Layout */}
+      <main className="max-w-4xl mx-auto px-2 sm:px-4 py-2 sm:py-3 space-y-2 sm:space-y-2.5">
         {/* Organizing Mode Banner */}
         {isOrganizing && (
-          <div className="bg-amber-50 border-2 border-amber-300 p-4 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md animate-in fade-in">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold">
+          <div className="bg-amber-50 border border-amber-300 p-2.5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-2 shadow-xs animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-amber-500 text-white flex items-center justify-center font-bold text-xs shrink-0">
                 ⇅
               </div>
               <div>
-                <h4 className="text-xs font-black uppercase tracking-wider text-amber-900">
-                  Modo Personalización y Reordenamiento
+                <h4 className="text-[11px] font-black uppercase tracking-wider text-amber-900 leading-tight">
+                  Modo Reordenamiento
                 </h4>
-                <p className="text-[11px] text-amber-700 font-medium">
-                  Usa los botones <strong>Subir ⬆ / Bajar ⬇</strong> o arrastra los módulos para ordenarlos a tu gusto.
+                <p className="text-[10px] text-amber-700 font-medium leading-tight">
+                  Usa los botones <strong>Subir ⬆ / Bajar ⬇</strong> para organizar las secciones a tu gusto.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <div className="flex items-center gap-1.5 w-full sm:w-auto justify-end">
               <button
                 onClick={resetWidgetOrder}
-                className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                className="h-7 px-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-lg text-[11px] font-bold transition-all cursor-pointer"
               >
-                Restablecer Orden
+                Restablecer
               </button>
               <button
                 onClick={() => setIsOrganizing(false)}
-                className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-sm transition-all cursor-pointer"
+                className="h-7 px-3 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[11px] font-black uppercase tracking-wider shadow-xs transition-all cursor-pointer"
               >
-                Terminar
+                Listo
               </button>
             </div>
           </div>
         )}
 
         {/* Dynamic Reorderable Widgets */}
-        <div className="space-y-4">
+        <div className="space-y-2 sm:space-y-2.5">
           {widgets.map((widget, index) => {
             return (
               <div
@@ -184,37 +184,37 @@ export const WeeklyApp: React.FC<WeeklyAppProps> = ({ onToggleToOldApp }) => {
                 }}
                 className={`transition-all duration-200 ${
                   isOrganizing
-                    ? 'ring-2 ring-amber-300/80 rounded-3xl p-1 bg-amber-50/20'
+                    ? 'ring-1 ring-amber-300 rounded-2xl p-1 bg-amber-50/30'
                     : ''
                 }`}
               >
                 {/* Reorder control strip if in organizing mode */}
                 {isOrganizing && (
-                  <div className="flex items-center justify-between px-3 py-1.5 bg-amber-100/80 border border-amber-200 rounded-2xl mb-2 text-xs font-bold text-amber-900">
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-between px-2.5 py-1 bg-amber-100/80 border border-amber-200 rounded-xl mb-1.5 text-xs font-bold text-amber-900">
+                    <div className="flex items-center gap-1.5">
                       <span className="cursor-grab text-amber-700">⋮⋮</span>
-                      <span>{widget.title}</span>
+                      <span className="text-[11px]">{widget.title}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => moveWidget(index, index - 1)}
                         disabled={index === 0}
-                        className="px-2 py-0.5 bg-white disabled:opacity-40 rounded-lg hover:bg-amber-200 transition-colors cursor-pointer disabled:cursor-not-allowed"
-                        title="Mover arriba"
+                        className="px-1.5 py-0.5 bg-white disabled:opacity-40 rounded text-[10px] hover:bg-amber-200 transition-colors cursor-pointer disabled:cursor-not-allowed"
+                        title="Subir"
                       >
-                        ⬆ Subir
+                        ⬆
                       </button>
                       <button
                         onClick={() => moveWidget(index, index + 1)}
                         disabled={index === widgets.length - 1}
-                        className="px-2 py-0.5 bg-white disabled:opacity-40 rounded-lg hover:bg-amber-200 transition-colors cursor-pointer disabled:cursor-not-allowed"
-                        title="Mover abajo"
+                        className="px-1.5 py-0.5 bg-white disabled:opacity-40 rounded text-[10px] hover:bg-amber-200 transition-colors cursor-pointer disabled:cursor-not-allowed"
+                        title="Bajar"
                       >
-                        ⬇ Bajar
+                        ⬇
                       </button>
                       <button
                         onClick={() => toggleWidgetCollapse(widget.id)}
-                        className="px-2 py-0.5 bg-white rounded-lg hover:bg-amber-200 transition-colors cursor-pointer"
+                        className="px-1.5 py-0.5 bg-white rounded text-[10px] hover:bg-amber-200 transition-colors cursor-pointer"
                         title={widget.collapsed ? "Expandir" : "Plegar"}
                       >
                         {widget.collapsed ? "Mostrar" : "Plegar"}
