@@ -82,7 +82,7 @@ export const WeeklyChartWidget: React.FC<WeeklyChartWidgetProps> = ({
         </button>
       </div>
 
-      {/* Bar Chart Container - Compact Height */}
+      {/* Bar Chart Container */}
       <div className="pt-1">
         <div className="grid grid-cols-7 gap-1.5 items-end h-28 pb-1.5 border-b border-slate-200">
           {daySummaries.map((day) => {

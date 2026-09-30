@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BusinessStats } from '../types';
 
@@ -25,7 +24,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ stats }) => {
           <p className="text-lg font-black truncate">${stats.totalRevenue.toLocaleString()}</p>
         </div>
         <div className="bg-amber-500 p-3 rounded-xl text-white shadow-2xs">
-          <p className="text-[9px] font-black uppercase opacity-75 tracking-wider">Costo Producción</p>
+          <p className="text-[9px] font-black uppercase opacity-75 tracking-wider">Costo Insumos</p>
           <p className="text-lg font-black truncate">${stats.totalCost.toLocaleString()}</p>
         </div>
       </div>

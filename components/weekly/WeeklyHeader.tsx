@@ -8,6 +8,9 @@ interface WeeklyHeaderProps {
   onToggleToOldApp: () => void;
   isOrganizing: boolean;
   onToggleOrganizing: () => void;
+  businessId: string;
+  isSyncing: boolean;
+  onOpenSyncModal: () => void;
 }
 
 export const WeeklyHeader: React.FC<WeeklyHeaderProps> = ({
@@ -16,20 +19,24 @@ export const WeeklyHeader: React.FC<WeeklyHeaderProps> = ({
   onToggleToOldApp,
   isOrganizing,
   onToggleOrganizing,
+  businessId,
+  isSyncing,
+  onOpenSyncModal
 }) => {
   const thisWeek = getWeekInfo();
   const isThisWeek = currentWeek.id === thisWeek.id;
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 px-2.5 sm:px-4 py-1.5 sm:py-2 shadow-2xs">
-      <div className="max-w-5xl mx-auto flex items-center justify-between gap-2">
-        {/* Left: Brand / Week label */}
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 px-2.5 sm:px-4 py-1.5 shadow-2xs">
+      <div className="max-w-5xl mx-auto flex items-center justify-between gap-1.5 sm:gap-2">
+        {/* Left: Brand & Week Info */}
         <div className="flex items-center gap-2 min-w-0">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-xs shrink-0">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v14a2 2 0 002 2z" />
             </svg>
           </div>
+
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <h1 className="text-xs sm:text-sm font-black text-slate-800 tracking-tight truncate leading-tight">
@@ -41,19 +48,35 @@ export const WeeklyHeader: React.FC<WeeklyHeaderProps> = ({
                 </span>
               )}
             </div>
-            <p className="text-[10px] text-slate-400 font-semibold truncate leading-tight hidden xs:block">
-              Arepitas Pa' Mamá · Semanal
-            </p>
+
+            <div className="flex items-center gap-2 text-[10px] text-slate-500 font-semibold truncate leading-tight">
+              <span className="hidden xs:inline">Arepitas Pa' Mamá</span>
+              <span className="text-slate-300 hidden xs:inline">•</span>
+              {/* Cloud Sync Status Indicator */}
+              <button
+                onClick={onOpenSyncModal}
+                className="flex items-center gap-1 text-[10px] text-slate-600 hover:text-blue-600 transition-colors cursor-pointer group"
+                title="Sincronización en la nube"
+              >
+                <span className={`w-2 h-2 rounded-full ${isSyncing ? 'bg-blue-500 animate-spin' : 'bg-emerald-500'} shrink-0`} />
+                <span className="font-bold underline decoration-dotted truncate max-w-[120px]">
+                  {businessId || 'arepitas-pa-mama'}
+                </span>
+                <span className="text-[9px] text-emerald-700 font-bold bg-emerald-50 px-1 rounded border border-emerald-200 hidden sm:inline">
+                  Nube
+                </span>
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Right: Controls & Week Selector */}
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
           {/* Week Selector Nav */}
-          <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200">
+          <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 shadow-2xs">
             <button
               onClick={() => onSelectWeek(getPreviousWeekId(currentWeek.id))}
-              className="w-7 h-7 sm:w-8 sm:h-7 rounded-lg text-slate-700 hover:bg-white transition-all flex items-center justify-center active:scale-95 cursor-pointer"
+              className="w-7 h-7 sm:w-8 sm:h-7 rounded-lg text-slate-700 hover:bg-white hover:text-slate-900 transition-all flex items-center justify-center active:scale-95 cursor-pointer"
               title="Semana anterior"
               aria-label="Semana anterior"
             >
@@ -73,7 +96,7 @@ export const WeeklyHeader: React.FC<WeeklyHeaderProps> = ({
 
             <button
               onClick={() => onSelectWeek(getNextWeekId(currentWeek.id))}
-              className="w-7 h-7 sm:w-8 sm:h-7 rounded-lg text-slate-700 hover:bg-white transition-all flex items-center justify-center active:scale-95 cursor-pointer"
+              className="w-7 h-7 sm:w-8 sm:h-7 rounded-lg text-slate-700 hover:bg-white hover:text-slate-900 transition-all flex items-center justify-center active:scale-95 cursor-pointer"
               title="Semana siguiente"
               aria-label="Semana siguiente"
             >
@@ -83,10 +106,22 @@ export const WeeklyHeader: React.FC<WeeklyHeaderProps> = ({
             </button>
           </div>
 
+          {/* Cloud Sync Button */}
+          <button
+            onClick={onOpenSyncModal}
+            className="h-7 w-7 sm:w-auto sm:px-2 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 font-bold text-[10px] flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer shadow-2xs"
+            title="Sincronización en la Nube"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className={`h-3.5 w-3.5 text-blue-600 ${isSyncing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span className="hidden md:inline font-bold">Nube</span>
+          </button>
+
           {/* Toggle Move / Rearrange Mode */}
           <button
             onClick={onToggleOrganizing}
-            className={`h-7 px-2 rounded-xl font-bold text-[11px] transition-all flex items-center gap-1 border active:scale-95 cursor-pointer ${
+            className={`h-7 px-2 rounded-xl font-bold text-[11px] transition-all flex items-center gap-1 border active:scale-95 cursor-pointer shadow-2xs ${
               isOrganizing
                 ? 'bg-amber-500 text-white border-amber-600 shadow-xs ring-1 ring-amber-300'
                 : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'

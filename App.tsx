@@ -198,7 +198,7 @@ const App: React.FC = () => {
   const [saleToEdit, setSaleToEdit] = useState<Sale | null>(null);
   const [bookingPrefill, setBookingPrefill] = useState<any>(null);
   
-  const [businessId, setBusinessId] = useState(() => localStorage.getItem('business_id') || '');
+  const [businessId, setBusinessId] = useState(() => localStorage.getItem('business_id') || 'arepitas-pa-mama');
 
   const [sales, setSales] = useState<Sale[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);

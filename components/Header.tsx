@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface HeaderProps {
@@ -12,17 +11,22 @@ export const Header: React.FC<HeaderProps> = ({ onToggleDespues }) => {
         <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-black text-xs shadow-xs">
           A
         </div>
-        <span className="font-black text-xs sm:text-sm text-slate-800 tracking-tight">
-          Arepitas Pa' Mamá
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span className="font-black text-xs sm:text-sm text-slate-800 tracking-tight">
+            Arepitas Pa' Mamá
+          </span>
+          <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded-md border border-slate-200">
+            Clásico
+          </span>
+        </div>
       </div>
       {onToggleDespues && (
         <button
           onClick={onToggleDespues}
           className="h-7 px-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-[10px] uppercase tracking-wider shadow-xs transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
-          title="Ir al nuevo proyecto"
+          title="Ir al nuevo proyecto semanal"
         >
-          <span>despues</span>
+          <span>después</span>
           <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
           </svg>
